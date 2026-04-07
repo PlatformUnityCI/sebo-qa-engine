@@ -6,7 +6,7 @@ name: Python QA Engine
 #
 #   jobs:
 #     qa:
-#       uses: sebco-labs/sebco-qa-engine/.github/workflows/python-qa.yml@main
+#       uses: PlatformUnityCI/sebco-qa-engine/.github/workflows/python-qa.yml@main
 #       with:
 #         python-version: "3.12"
 #         analyzers: "flake8,coverage,bandit,radon,mutmut"
@@ -77,7 +77,7 @@ jobs:
 
       - name: Install QA engine
         run: |
-          pip install "git+https://github.com/sebco-labs/sebco-qa-engine.git@${{ inputs.engine-ref }}" --quiet
+          pip install "git+https://github.com/PlatformUnityCI/sebco-qa-engine.git@${{ inputs.engine-ref }}" --quiet
 
       - name: Run QA engine
         id: qa-run
