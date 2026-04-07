@@ -11,4 +11,4 @@ jobs:
       contents: write
       issues: write
       pull-requests: write
-    uses: PlatformUnityCI/cross-platform-guard/.github/workflows/release-governance.yml@v1.2.4
+    uses: PlatformUnityCI/cross-platform-guard/.github/workflows/release-governance.yml@v1.2.5
