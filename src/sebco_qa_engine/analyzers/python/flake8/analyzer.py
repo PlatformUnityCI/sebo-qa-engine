@@ -167,12 +167,19 @@ class Flake8Analyzer(BaseAnalyzer):
         else:
             execution_status = ExecutionStatus.SUCCESS
 
+        budget = self.config.max_issue_budget
+        score_percent = max(0.0, round((1 - total / budget) * 100, 2))
+
         metrics = RunMetrics(
-            score=None,
+            score=score_percent,
             total=total,
             ok_count=0 if total > 0 else None,
             issue_count=total,
-            extra={"violation_codes": unique_codes},
+            extra={
+                "violation_codes": unique_codes,
+                "score_percent": score_percent,
+                "max_issue_budget": budget,
+            },
         )
 
         return AnalyzerResult(
@@ -213,16 +220,18 @@ class Flake8Analyzer(BaseAnalyzer):
 
     @staticmethod
     def _to_normalized_json(result: AnalyzerResult) -> str:
+        m = result.metrics
         payload = {
             "analyzer": result.analyzer,
             "language": result.language,
             "execution_status": result.execution_status.value,
             "metrics": {
-                "score": result.metrics.score,
-                "total": result.metrics.total,
-                "ok_count": result.metrics.ok_count,
-                "issue_count": result.metrics.issue_count,
-                "violation_codes": result.metrics.extra.get("violation_codes", []),
+                "score_percent": m.extra.get("score_percent"),
+                "max_issue_budget": m.extra.get("max_issue_budget"),
+                "issue_count": m.issue_count,
+                "total": m.total,
+                "ok_count": m.ok_count,
+                "violation_codes": m.extra.get("violation_codes", []),
             },
             "details": result.details,
         }
@@ -234,6 +243,8 @@ class Flake8Analyzer(BaseAnalyzer):
         payload = {
             "analyzer": result.analyzer,
             "execution_status": result.execution_status.value,
+            "score_percent": m.extra.get("score_percent"),
+            "max_issue_budget": m.extra.get("max_issue_budget"),
             "issue_count": m.issue_count,
             "violation_codes": m.extra.get("violation_codes", []),
         }
@@ -243,6 +254,12 @@ class Flake8Analyzer(BaseAnalyzer):
     def _to_summary_md(result: AnalyzerResult) -> str:
         m = result.metrics
         issue_str = str(m.issue_count) if m.issue_count is not None else "N/A"
+        score_str = (
+            f"{m.extra['score_percent']}%"
+            if m.extra.get("score_percent") is not None
+            else "N/A"
+        )
+        budget_str = str(m.extra.get("max_issue_budget", "N/A"))
         codes = m.extra.get("violation_codes", [])
         codes_str = ", ".join(f"`{c}`" for c in codes) if codes else "None"
 
@@ -267,7 +284,8 @@ class Flake8Analyzer(BaseAnalyzer):
 
 | Metric | Value |
 |---|---:|
-| Total Violations | **{issue_str}** |
+| Score | **{score_str}** |
+| Total Violations | **{issue_str}** / {budget_str} budget |
 | Violation Codes | {codes_str} |
 
 ### Violations (first 20)

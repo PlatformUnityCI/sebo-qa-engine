@@ -229,6 +229,49 @@ class TestFlake8AnalyzerNormalize:
         result = analyzer.normalize(_NO_VIOLATIONS_OUTPUT)
         assert result.metrics.extra["violation_codes"] == []
 
+    # --- score_percent ---
+
+    def test_score_percent_in_metrics_score(self, tmp_path):
+        """metrics.score must be score_percent (0–100 range)."""
+        analyzer = _make_analyzer(tmp_path)
+        result = analyzer.normalize(_VIOLATIONS_OUTPUT)  # 3 violations, budget=50
+        assert result.metrics.score == pytest.approx(94.0)
+
+    def test_score_percent_in_extra(self, tmp_path):
+        analyzer = _make_analyzer(tmp_path)
+        result = analyzer.normalize(_VIOLATIONS_OUTPUT)
+        assert result.metrics.extra["score_percent"] == pytest.approx(94.0)
+
+    def test_max_issue_budget_in_extra(self, tmp_path):
+        analyzer = _make_analyzer(tmp_path)
+        result = analyzer.normalize(_VIOLATIONS_OUTPUT)
+        assert result.metrics.extra["max_issue_budget"] == 50
+
+    def test_score_percent_perfect_when_no_violations(self, tmp_path):
+        analyzer = _make_analyzer(tmp_path)
+        result = analyzer.normalize(_NO_VIOLATIONS_OUTPUT)
+        assert result.metrics.score == pytest.approx(100.0)
+
+    def test_score_percent_floored_at_zero_when_over_budget(self, tmp_path):
+        """issue_count > max_issue_budget must clamp to 0, not go negative."""
+        cfg = Flake8Config(max_issue_budget=2)
+        analyzer = _make_analyzer(tmp_path, config=cfg)
+        result = analyzer.normalize(_VIOLATIONS_OUTPUT)  # 3 violations > budget 2
+        assert result.metrics.score == 0.0
+
+    def test_score_percent_respects_custom_budget(self, tmp_path):
+        """Budget 50, 3 violations → (1 - 3/50) * 100 = 94.0."""
+        cfg = Flake8Config(max_issue_budget=50)
+        analyzer = _make_analyzer(tmp_path, config=cfg)
+        result = analyzer.normalize(_VIOLATIONS_OUTPUT)
+        assert result.metrics.score == pytest.approx(94.0)
+
+    def test_score_percent_issue_count_unchanged(self, tmp_path):
+        """Adding score_percent must not affect issue_count semantics."""
+        analyzer = _make_analyzer(tmp_path)
+        result = analyzer.normalize(_VIOLATIONS_OUTPUT)
+        assert result.metrics.issue_count == 3
+
 
 # ---------------------------------------------------------------------------
 # Tests: write_artifacts()
@@ -286,6 +329,34 @@ class TestFlake8AnalyzerWriteArtifacts:
         assert data["analyzer"] == "flake8"
         assert "issue_count" in data
         assert "violation_codes" in data
+
+    def test_summary_json_contains_score_percent(self, tmp_path):
+        analyzer, result = self._get_result_and_analyzer(tmp_path)
+        analyzer.write_artifacts(result)
+        data = json.loads(result.artifacts["summary_json"].read_text())
+        assert "score_percent" in data
+        assert data["score_percent"] == pytest.approx(94.0)  # 3 violations, budget 50
+
+    def test_summary_json_contains_max_issue_budget(self, tmp_path):
+        analyzer, result = self._get_result_and_analyzer(tmp_path)
+        analyzer.write_artifacts(result)
+        data = json.loads(result.artifacts["summary_json"].read_text())
+        assert "max_issue_budget" in data
+        assert data["max_issue_budget"] == 50
+
+    def test_normalized_json_contains_score_percent(self, tmp_path):
+        analyzer, result = self._get_result_and_analyzer(tmp_path)
+        analyzer.write_artifacts(result)
+        data = json.loads(result.artifacts["normalized"].read_text())
+        assert "score_percent" in data["metrics"]
+        assert data["metrics"]["score_percent"] == pytest.approx(94.0)
+
+    def test_summary_md_contains_score(self, tmp_path):
+        analyzer, result = self._get_result_and_analyzer(tmp_path)
+        analyzer.write_artifacts(result)
+        md = result.artifacts["summary_md"].read_text()
+        assert "Score" in md
+        assert "94.0%" in md
 
     def test_summary_markdown_contains_issue_count(self, tmp_path):
         analyzer, result = self._get_result_and_analyzer(tmp_path)

@@ -43,3 +43,7 @@ class Flake8Config:
     max_line_length: int | None = None  # None = use flake8 default
     extra_args: list[str] = field(default_factory=list)
     timeout: int | None = 120
+    # Budget used to derive score_percent for reporting/dashboard.
+    # score_percent = max(0, round((1 - issue_count / max_issue_budget) * 100, 2))
+    # Does NOT affect the quality gate — that still uses max_issues (aggregation layer).
+    max_issue_budget: int = 50
