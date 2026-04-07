@@ -39,9 +39,11 @@ logger = logging.getLogger(__name__)
 
 _SECTION_SEP = "\n" + "=" * 60 + "\n"
 
-# Extract killed / survived counts from mutmut's emoji progress line
-_KILLED_RE = re.compile(r"🎉\s*(\d+)")
-_SURVIVED_RE = re.compile(r"🙁\s*(\d+)")
+# Capture killed + survived from the same progress line.
+# mutmut emits many intermediate lines (🎉 0 🙁 0) during the run;
+# only the LAST one has the final counters — re.findall + [-1] replicates
+# the logic from pipeline-mutation-example.yml (line 269).
+_PROGRESS_RE = re.compile(r"🎉\s*(\d+).*?🙁\s*(\d+)", re.DOTALL)
 
 # Surviving mutant line patterns from ``mutmut results``
 _NAMED_MUTANT_RE = re.compile(r"^([A-Za-z0-9_./-]+(?:__mutmut_\d+)):\s+survived$")
@@ -135,10 +137,10 @@ class MutmutAnalyzer(BaseAnalyzer):
         results_section = self._extract_section(clean, "=== mutmut results ===")
         show_section = self._extract_section(clean, "=== mutmut show ===")
 
-        killed = self._parse_int(_KILLED_RE, run_section)
-        survived_count = self._parse_int(_SURVIVED_RE, run_section)
+        killed, survived_count = self._parse_final_counters(run_section)
 
-        # Fallback: count from results section if emoji parsing failed
+        # Fallback: count surviving IDs from results section when emoji
+        # parsing fails (e.g. output was truncated or format changed).
         surviving_ids = self._parse_surviving_ids(results_section)
         if survived_count is None:
             survived_count = len(surviving_ids)
@@ -268,10 +270,22 @@ class MutmutAnalyzer(BaseAnalyzer):
         return text[start:end].strip() if end != -1 else text[start:].strip()
 
     @staticmethod
-    def _parse_int(pattern: re.Pattern[str], text: str) -> int | None:
-        """Return the first integer captured by *pattern* in *text*, or None."""
-        m = pattern.search(text)
-        return int(m.group(1)) if m else None
+    def _parse_final_counters(run_text: str) -> tuple[int | None, int | None]:
+        """Return (killed, survived) from the last progress line in *run_text*.
+
+        mutmut emits many intermediate progress lines like::
+
+            ⠹ 1/5  🎉 1 🫥 0  ⏰ 0  🤔 0  🙁 0  🔇 0  🧙 0
+            ⠸ 5/5  🎉 2 🫥 0  ⏰ 0  🤔 0  🙁 3  🔇 0  🧙 0
+
+        Only the LAST match has the final counters.  Using ``re.findall``
+        and picking ``[-1]`` mirrors the reference pipeline exactly.
+        """
+        matches = _PROGRESS_RE.findall(run_text)
+        if not matches:
+            return None, None
+        killed_str, survived_str = matches[-1]
+        return int(killed_str), int(survived_str)
 
     @staticmethod
     def _parse_surviving_ids(results_text: str) -> list[str]:

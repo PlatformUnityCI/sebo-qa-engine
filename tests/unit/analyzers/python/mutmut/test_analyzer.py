@@ -57,6 +57,38 @@ def _make_raw_no_survivors() -> str:
     ])
 
 
+def _make_raw_with_progress_lines() -> str:
+    """Simulate real mutmut output with intermediate progress lines.
+
+    mutmut emits counters on every progress tick; the intermediate lines
+    all start at 0.  Only the LAST line has the final counters.
+    This is the case that broke the original ``re.search`` approach.
+
+    Based on docs/architecture/mutmut-artifacts.expected/mutmut-run.txt:
+        ⠹ 1/5  🎉 1 🫥 0  ⏰ 0  🤔 0  🙁 0  🔇 0  🧙 0
+        ⠸ 5/5  🎉 2 🫥 0  ⏰ 0  🤔 0  🙁 3  🔇 0  🧙 0
+    Expected: killed=2, survived=3, total=5, score=40.0
+    """
+    sep = "\n" + "=" * 60 + "\n"
+    run_section = (
+        "=== mutmut run ===\n"
+        "⠇ 0/5  🎉 0 🫥 0  ⏰ 0  🤔 0  🙁 0  🔇 0  🧙 0\n"
+        "⠹ 1/5  🎉 1 🫥 0  ⏰ 0  🤔 0  🙁 0  🔇 0  🧙 0\n"
+        "⠸ 5/5  🎉 2 🫥 0  ⏰ 0  🤔 0  🙁 3  🔇 0  🧙 0\n"
+        "31.85 mutations/second"
+    )
+    return sep.join([
+        run_section,
+        (
+            "=== mutmut results ===\n"
+            "lib_core.time_utils.date_utils.x_generate_time__mutmut_2: survived\n"
+            "lib_core.time_utils.date_utils.x_generate_time__mutmut_4: survived\n"
+            "lib_core.time_utils.date_utils.x_generate_time__mutmut_5: survived"
+        ),
+        "=== mutmut show ===\nNo surviving mutants.",
+    ])
+
+
 # ---------------------------------------------------------------------------
 # Tests: MutantDetail (mutmut-specific model)
 # ---------------------------------------------------------------------------
@@ -218,6 +250,23 @@ class TestMutmutAnalyzerNormalize:
         raw_with_ansi = "\x1b[2K\x1b[1A" + _make_raw_with_survivors()
         result = analyzer.normalize(raw_with_ansi)
         assert result.metrics.score is not None
+
+    def test_final_counters_taken_from_last_progress_line(self, tmp_path):
+        """re.search returns the first match (🎉 0); re.findall[-1] returns the last (🎉 2).
+
+        This test reproduces the exact bug: intermediate progress lines have
+        🎉 0 🙁 0, so re.search would yield killed=0, score=0.
+        The fix uses re.findall + [-1] to always get the final counters.
+
+        Reference: docs/architecture/mutmut-artifacts.expected/mutmut-run.txt
+        Expected:  killed=2, survived=3, total=5, score=40.0
+        """
+        analyzer = _make_analyzer(tmp_path)
+        result = analyzer.normalize(_make_raw_with_progress_lines())
+        assert result.metrics.ok_count == 2
+        assert result.metrics.issue_count == 3
+        assert result.metrics.total == 5
+        assert result.metrics.score == pytest.approx(40.0)
 
 
 # ---------------------------------------------------------------------------
