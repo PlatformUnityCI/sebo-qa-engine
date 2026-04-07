@@ -1,0 +1,311 @@
+name: Python QA Engine
+
+# Reusable workflow — called from consumer repositories via workflow_call.
+#
+# Usage in consumer repo (.github/workflows/qa.yml):
+#
+#   jobs:
+#     qa:
+#       uses: sebco-labs/sebco-qa-engine/.github/workflows/python-qa.yml@main
+#       with:
+#         python-version: "3.12"
+#         analyzers: "flake8,coverage,bandit,radon,mutmut"
+#         output-dir: "qa-report"
+#       secrets:
+#         token: ${{ secrets.GITHUB_TOKEN }}
+#
+# The consumer repo must have the required tools installed in its
+# requirements or pyproject.toml (mutmut, flake8, coverage, bandit, radon).
+
+on:
+  workflow_call:
+    inputs:
+      python-version:
+        description: "Python version to use"
+        type: string
+        default: "3.12"
+      analyzers:
+        description: "Comma-separated list of analyzers to run (mutmut,flake8,coverage,bandit,radon)"
+        type: string
+        default: "flake8,coverage,bandit,radon"
+      output-dir:
+        description: "Directory where QA artifacts will be written"
+        type: string
+        default: "qa-report"
+      engine-ref:
+        description: "Branch/tag of sebco-qa-engine to use"
+        type: string
+        default: "main"
+      install-command:
+        description: "Command to install consumer repo dependencies"
+        type: string
+        default: "pip install -e .[dev] --quiet"
+    secrets:
+      token:
+        description: "GitHub token for PR comments"
+        required: false
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  python-qa:
+    name: Python QA (${{ inputs.analyzers }})
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout consumer repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ inputs.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ inputs.python-version }}
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ inputs.python-version }}-${{ hashFiles('**/requirements*.txt', '**/pyproject.toml', '**/setup.cfg') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-${{ inputs.python-version }}-
+            ${{ runner.os }}-pip-
+
+      - name: Install consumer dependencies
+        run: ${{ inputs.install-command }}
+
+      - name: Install QA engine
+        run: |
+          pip install "git+https://github.com/sebco-labs/sebco-qa-engine.git@${{ inputs.engine-ref }}" --quiet
+
+      - name: Run QA engine
+        id: qa-run
+        run: |
+          python - <<'PY'
+          import os
+          import sys
+          from pathlib import Path
+
+          analyzers_input = os.environ.get("QA_ANALYZERS", "flake8,coverage,bandit,radon")
+          output_dir_str = os.environ.get("QA_OUTPUT_DIR", "qa-report")
+
+          requested = [a.strip() for a in analyzers_input.split(",") if a.strip()]
+          output_dir = Path(output_dir_str)
+
+          print(f"[qa-engine] analyzers requested: {requested}")
+          print(f"[qa-engine] output_dir: {output_dir}")
+
+          from sebco_qa_engine.orchestration.runner import Runner
+          from sebco_qa_engine.aggregation.aggregator import Aggregator
+          from sebco_qa_engine.aggregation.defaults import DEFAULT_POLICIES
+
+          analyzers = []
+          base = Path(".")
+
+          if "flake8" in requested:
+              from sebco_qa_engine.analyzers.python.flake8 import Flake8Analyzer
+              analyzers.append(Flake8Analyzer(output_dir=output_dir / "flake8"))
+
+          if "coverage" in requested:
+              from sebco_qa_engine.analyzers.python.coverage import CoverageAnalyzer
+              analyzers.append(CoverageAnalyzer(output_dir=output_dir / "coverage"))
+
+          if "bandit" in requested:
+              from sebco_qa_engine.analyzers.python.bandit import BanditAnalyzer
+              analyzers.append(BanditAnalyzer(output_dir=output_dir / "bandit"))
+
+          if "radon" in requested:
+              from sebco_qa_engine.analyzers.python.radon import RadonAnalyzer
+              analyzers.append(RadonAnalyzer(output_dir=output_dir / "radon"))
+
+          if "mutmut" in requested:
+              from sebco_qa_engine.analyzers.python.mutmut import MutmutAnalyzer
+              analyzers.append(MutmutAnalyzer(output_dir=output_dir / "mutmut"))
+
+          if not analyzers:
+              print("[qa-engine] No analyzers matched. Exiting.")
+              sys.exit(0)
+
+          run_id = os.environ.get("GITHUB_RUN_ID", "")
+          runner = Runner(analyzers=analyzers, run_id=run_id or None)
+
+          print(f"[qa-engine] Starting run (run_id={runner.run_id})")
+          runner_result = runner.run()
+
+          aggregator = Aggregator(
+              policies=DEFAULT_POLICIES,
+              base_dir=output_dir,
+              language="python",
+          )
+          report = aggregator.aggregate(runner_result)
+
+          import json
+          report_path = output_dir / "qa-report.json"
+          output_dir.mkdir(parents=True, exist_ok=True)
+          report_path.write_text(
+              json.dumps({
+                  "run_id": report.run_id,
+                  "language": report.language,
+                  "generated_at": report.generated_at,
+                  "summary": {
+                      "declared": report.summary.declared,
+                      "executed": report.summary.executed,
+                      "passed": report.summary.passed,
+                      "warned": report.summary.warned,
+                      "failed": report.summary.failed,
+                      "errored": report.summary.errored,
+                      "skipped": report.summary.skipped,
+                      "executed_pct": report.summary.executed_pct,
+                      "success_pct": report.summary.success_pct,
+                      "pending_pct": report.summary.pending_pct,
+                  },
+                  "scores": report.scores,
+                  "results": [
+                      {
+                          "analyzer": s.analyzer,
+                          "language": s.language,
+                          "execution_status": s.execution_status,
+                          "quality_gate": s.quality_gate,
+                          "gate_reason": s.gate_reason,
+                          "score": s.score,
+                          "total": s.total,
+                          "ok_count": s.ok_count,
+                          "issue_count": s.issue_count,
+                          "error_message": s.error_message,
+                      }
+                      for s in report.results
+                  ],
+              }, indent=2, ensure_ascii=False),
+              encoding="utf-8",
+          )
+
+          print(f"[qa-engine] Report written to {report_path}")
+          print(f"[qa-engine] Summary: declared={report.summary.declared} executed={report.summary.executed} passed={report.summary.passed} failed={report.summary.failed}")
+
+          summary_md_path = output_dir / "qa-summary.md"
+          lines = [
+              "## QA Engine Report",
+              "",
+              f"**Run ID**: `{report.run_id}`",
+              f"**Language**: {report.language}",
+              f"**Generated**: {report.generated_at}",
+              "",
+              "### Summary",
+              "",
+              "| Metric | Value |",
+              "|---|---:|",
+              f"| Declared | **{report.summary.declared}** |",
+              f"| Executed | **{report.summary.executed}** ({report.summary.executed_pct}%) |",
+              f"| Passed | **{report.summary.passed}** |",
+              f"| Warned | **{report.summary.warned}** |",
+              f"| Failed | **{report.summary.failed}** |",
+              f"| Errored | **{report.summary.errored}** |",
+              f"| Skipped | **{report.summary.skipped}** |",
+              f"| Success rate | **{report.summary.success_pct}%** |",
+              f"| Pending attention | **{report.summary.pending_pct}%** |",
+              "",
+              "### Analyzer Results",
+              "",
+              "| Analyzer | Execution | Gate | Score | Reason |",
+              "|---|---|---|---|---|",
+          ]
+          for s in report.results:
+              score_str = f"{s.score}%" if s.score is not None else "—"
+              gate_emoji = {"pass": "✅", "warn": "⚠️", "fail": "❌", "skip": "⏭️"}.get(s.quality_gate, "❓")
+              status_emoji = {"success": "✅", "failed": "⚠️", "error": "❌", "skipped": "⏭️"}.get(s.execution_status, "❓")
+              lines.append(
+                  f"| `{s.analyzer}` | {status_emoji} {s.execution_status} | {gate_emoji} {s.quality_gate} | {score_str} | {s.gate_reason} |"
+              )
+
+          summary_md_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+          print(f"[qa-engine] Summary markdown written to {summary_md_path}")
+
+          # Write to GitHub Step Summary
+          github_step_summary = os.environ.get("GITHUB_STEP_SUMMARY")
+          if github_step_summary:
+              with open(github_step_summary, "a", encoding="utf-8") as f:
+                  f.write("\n".join(lines) + "\n")
+
+          # Exit with non-zero if any gate failed
+          has_failure = any(s.quality_gate == "fail" for s in report.results)
+          if has_failure:
+              print("[qa-engine] One or more quality gates FAILED.")
+              sys.exit(1)
+
+          PY
+        env:
+          QA_ANALYZERS: ${{ inputs.analyzers }}
+          QA_OUTPUT_DIR: ${{ inputs.output-dir }}
+        continue-on-error: true
+
+      - name: Comment QA summary on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        env:
+          QA_OUTPUT_DIR: ${{ inputs.output-dir }}
+        with:
+          github-token: ${{ secrets.token || github.token }}
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+
+            const outputDir = process.env.QA_OUTPUT_DIR || 'qa-report';
+            const summaryPath = path.join(outputDir, 'qa-summary.md');
+            const reportPath  = path.join(outputDir, 'qa-report.json');
+
+            let summaryBody = '## QA Engine Report\n\n_No summary generated._';
+            if (fs.existsSync(summaryPath)) {
+              summaryBody = fs.readFileSync(summaryPath, 'utf8');
+            }
+
+            const runId    = process.env.GITHUB_RUN_ID;
+            const { owner, repo } = context.repo;
+            const issueNumber = context.issue.number;
+            const marker   = '<!-- sebco-qa-engine-summary -->';
+
+            const artifactUrl = `https://github.com/${owner}/${repo}/actions/runs/${runId}`;
+            const footer = `\n\n---\n🔍 **Full QA artifacts:** [GitHub Actions Run](${artifactUrl})`;
+
+            const body = `${marker}\n${summaryBody}${footer}`;
+
+            // Upsert: find existing bot comment with marker
+            const comments = await github.rest.issues.listComments({
+              owner, repo,
+              issue_number: issueNumber,
+              per_page: 100,
+            });
+
+            const existing = comments.data.find(c =>
+              c.user.type === 'Bot' && c.body.includes(marker)
+            );
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner, repo,
+                comment_id: existing.id,
+                body,
+              });
+              console.log(`Updated existing QA comment (id: ${existing.id})`);
+            } else {
+              await github.rest.issues.createComment({
+                owner, repo,
+                issue_number: issueNumber,
+                body,
+              });
+              console.log('Created new QA comment');
+            }
+
+      - name: Upload QA artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: qa-report
+          path: ${{ inputs.output-dir }}/
+          if-no-files-found: warn
+
+      - name: Fail if quality gates failed
+        if: steps.qa-run.outcome == 'failure'
+        run: |
+          echo "::error::One or more QA quality gates failed. See the QA report for details."
+          exit 1

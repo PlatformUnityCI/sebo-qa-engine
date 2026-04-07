@@ -3,7 +3,7 @@
 ## Overview
 Sebco QA Engine is a reusable, multi-language quality validation engine designed to be invoked from external repositories.
 
-Its architecture is designed as a modular layered system with extensible analyzers implemented as plugin-like components. Within that model, each analyzer follows a strategy-oriented approach so new tools can be added, replaced or evolved without breaking the engine core.
+It is built as a modular layered system with extensible analyzers implemented as plugin-like components. Each analyzer follows a strategy-oriented approach, allowing tools to evolve independently without coupling the engine core.
 
 ## Goals
 - Provide standardized quality checks
@@ -22,9 +22,9 @@ Its architecture is designed as a modular layered system with extensible analyze
 - Clear separation of responsibilities
 
 ## Architecture
-Sebco QA Engine follows a modular layered architecture with pluggable analyzers.
+The engine follows a modular layered architecture with pluggable analyzers.
 
-The main architectural layers are:
+Main layers:
 - orchestration
 - language-specific workflows
 - analyzers
@@ -32,15 +32,57 @@ The main architectural layers are:
 - reporting
 - schemas and shared utilities
 
-Each analyzer is designed as an extensible plugin-like component and follows a strategy pattern, allowing different analysis tools to implement a common contract while keeping their execution logic isolated and maintainable.
+Analyzers act as plugin-like components following a strategy pattern under a common contract.
 
 ## Initial Scope
-Initial Python analyzers:
+Python analyzers:
 - mutmut
 - flake8
 - coverage
 - bandit
 - radon
+
+## Source of Truth
+- This document defines architecture and implementation decisions.
+- Repository documentation overrides implicit session memory.
+
+## Implementation Guidelines
+- Implement engine logic in Python whenever possible.
+- Use YAML only for workflow orchestration and script invocation.
+- Keep analyzers isolated and independently executable.
+- Avoid coupling logic to a specific language in the core.
+
+## Execution Model
+- Workflows are organized by language.
+- Analyzers run independently and can be parallelized.
+- Results are normalized into reusable artifacts.
+- A final aggregation step consolidates results.
+- PR reporting is published as a single master comment with sections per analyzer.
+
+## Environment Expectations
+- Use a reproducible virtual environment.
+- Avoid machine-specific configurations.
+- Document setup clearly.
+
+## Documentation Expectations
+- Provide clear setup and usage instructions.
+- Reflect architecture decisions in documentation.
+- README must cover usage, execution and extension.
+
+## Roadmap
+### Phase 1
+- Base structure
+- Python environment
+- First analyzer
+
+### Phase 2
+- Additional analyzers
+- Artifact normalization
+- Aggregation and PR reporting
+
+### Phase 3
+- Public datasets
+- Multi-language support
 
 ## Status
 Initial architecture phase.

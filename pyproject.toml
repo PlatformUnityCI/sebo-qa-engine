@@ -35,10 +35,21 @@ classifiers = [
 dependencies = []
 
 [project.optional-dependencies]
+# Analyzer tools — install in the target repo, not in the engine itself.
+# Listed here for documentation purposes only.
+# analyzers = [
+#   "mutmut>=2.5",
+#   "flake8>=7.0",
+#   "coverage>=7.0",
+#   "bandit>=1.8",
+#   "radon>=6.0",
+# ]
+
 dev = [
   "pytest>=8.0",
   "pytest-cov>=5.0",
-  "ruff>=0.5.0"
+  "ruff>=0.5.0",
+  "mutmut>=2.5",
 ]
 
 [tool.setuptools]
@@ -50,7 +61,7 @@ where = ["src"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]
-addopts = "-ra"
+addopts = "-ra -v"
 
 [tool.ruff]
 line-length = 100
