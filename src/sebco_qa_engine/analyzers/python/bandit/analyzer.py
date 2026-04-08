@@ -139,17 +139,30 @@ class BanditAnalyzer(BaseAnalyzer):
                 raw_output=raw_output,
             )
 
-        # Extract severity counts from the _totals section
+        # Extract severity counts from the _totals section.
+        # execution_status is SUCCESS regardless of how many issues are found —
+        # bandit ran and produced parseable JSON.  Quality evaluation (FAIL/WARN/PASS)
+        # is the aggregation layer's responsibility (SeverityPolicy).
         totals = data.get("metrics", {}).get("_totals", {})
         high = int(totals.get("SEVERITY.HIGH", 0))
         medium = int(totals.get("SEVERITY.MEDIUM", 0))
         low = int(totals.get("SEVERITY.LOW", 0))
         issue_count = high + medium + low
 
-        # Derive a 0-100 score from issue_count for reporting/dashboard.
-        # The quality gate itself is driven by SeverityPolicy (not this score).
-        budget = self.config.max_issue_budget
-        score = max(0.0, round((1 - issue_count / budget) * 100, 2))
+        # Severity-weighted score (0–100).
+        # Each severity level carries a configurable penalty so that a single
+        # HIGH finding has far more impact than many LOW ones.
+        #   score = max(0, 100 - (H * high_weight + M * medium_weight + L * low_weight))
+        # Example default weights (50 / 10 / 1):
+        #   0 HIGH, 0 MED, 15 LOW  → score = max(0, 100 - 15)  = 85
+        #   1 HIGH, 0 MED,  0 LOW  → score = max(0, 100 - 50)  = 50
+        #   0 HIGH, 5 MED,  0 LOW  → score = max(0, 100 - 50)  = 50
+        penalty = (
+            high   * self.config.high_weight
+            + medium * self.config.medium_weight
+            + low    * self.config.low_weight
+        )
+        score = float(max(0, 100 - penalty))
 
         # ok_count = scanned lines of code (loc), if reported by bandit.
         loc = int(totals.get("loc", 0))
@@ -162,7 +175,11 @@ class BanditAnalyzer(BaseAnalyzer):
             extra={
                 "severity": {"high": high, "medium": medium, "low": low},
                 "score_percent": score,
-                "max_issue_budget": budget,
+                "weights": {
+                    "high": self.config.high_weight,
+                    "medium": self.config.medium_weight,
+                    "low": self.config.low_weight,
+                },
             },
         )
 
@@ -231,7 +248,7 @@ class BanditAnalyzer(BaseAnalyzer):
                 "issue_count": result.metrics.issue_count,
                 "ok_count": result.metrics.ok_count,
                 "severity": severity,
-                "max_issue_budget": extra.get("max_issue_budget"),
+                "weights": extra.get("weights", {}),
             },
             "details": [asdict(d) for d in result.details],
         }
@@ -247,7 +264,6 @@ class BanditAnalyzer(BaseAnalyzer):
             "score": result.metrics.score,
             "score_percent": extra.get("score_percent"),
             "issue_count": result.metrics.issue_count,
-            "max_issue_budget": extra.get("max_issue_budget"),
             "severity": severity,
         }
         return json.dumps(payload, indent=2, ensure_ascii=False)
@@ -261,8 +277,11 @@ class BanditAnalyzer(BaseAnalyzer):
         low = severity.get("low", 0)
         total = result.metrics.issue_count or 0
         score = result.metrics.score
-        score_str = f"{score}%" if score is not None else "N/A"
-        budget = extra.get("max_issue_budget", "N/A")
+        score_str = f"{score:.0f}%" if score is not None else "N/A"
+        weights = extra.get("weights", {})
+        w_h = weights.get("high", 50)
+        w_m = weights.get("medium", 10)
+        w_l = weights.get("low", 1)
 
         return f"""\
 ## Security Analysis Summary (bandit)
@@ -270,15 +289,10 @@ class BanditAnalyzer(BaseAnalyzer):
 | Metric | Value |
 |---|---:|
 | Score | **{score_str}** |
-| Total Findings | **{total}** / {budget} budget |
-
-### Severity Breakdown
-
-| Severity | Count |
-|---|---:|
-| High | **{high}** |
-| Medium | **{medium}** |
-| Low | **{low}** |
+| High severity | **{high}** (×{w_h} penalty each) |
+| Medium severity | **{medium}** (×{w_m} penalty each) |
+| Low severity | **{low}** (×{w_l} penalty each) |
+| Total findings | **{total}** |
 
 Execution status: `{result.execution_status.value}`
 

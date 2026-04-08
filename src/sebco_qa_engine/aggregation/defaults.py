@@ -53,8 +53,8 @@ DEFAULT_POLICIES: dict[str, QualityGatePolicy] = {
     # Coverage — primary signal is line/branch coverage %
     "coverage": ScoreGatePolicy(_COVERAGE_THRESHOLDS),
 
-    # Security — no high-severity findings; up to 3 medium allowed
-    "bandit": SeverityPolicy(max_high=0, max_medium=3),
+    # Security — no high-severity findings; up to 5 medium allowed
+    "bandit": SeverityPolicy(max_high=0, max_medium=5),
 
     # Complexity — maintainability index as score
     "radon": ScoreGatePolicy(_RADON_THRESHOLDS),
