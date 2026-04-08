@@ -1,8 +1,8 @@
 # Sebco QA Engine
 
-Reusable, multi-language quality validation engine designed to be invoked from external repositories via GitHub Actions.
+Language-agnostic, reusable quality validation engine designed to be invoked from external repositories via GitHub Actions. The core is decoupled from any specific language or tool — analyzers are pluggable strategy components that conform to a common contract, making it straightforward to add new languages without touching the orchestration or aggregation layers.
 
-> Part of the sebco-labs ecosystem.
+> Part of the sebco-labs / PlatformUnityCI ecosystem.
 
 ---
 
@@ -56,11 +56,28 @@ qa-report/
 ├── flake8/
 │   ├── raw/flake8-raw.txt
 │   ├── normalized/flake8.json
+│   ├── summary/flake8-summary.json
 │   └── summary/flake8-summary.md
 ├── coverage/
+│   ├── raw/coverage-raw.txt
+│   ├── normalized/coverage.json
+│   ├── summary/coverage-summary.json
+│   └── summary/coverage-summary.md
 ├── bandit/
+│   ├── raw/bandit-raw.json
+│   ├── normalized/bandit.json
+│   ├── summary/bandit-summary.json
+│   └── summary/bandit-summary.md
 ├── radon/
+│   ├── raw/radon-raw.json
+│   ├── normalized/radon.json
+│   ├── summary/radon-summary.json
+│   └── summary/radon-summary.md
 ├── mutmut/
+│   ├── raw/mutmut-raw.txt
+│   ├── normalized/mutmut.json
+│   ├── summary/mutmut-summary.json
+│   └── summary/mutmut-summary.md
 ├── qa-report.json              ← Aggregated report with all scores and gate verdicts
 └── qa-summary.md               ← Human-readable Markdown (also posted as PR comment)
 ```
@@ -107,13 +124,13 @@ qa-report/
 
 ### Default quality gate thresholds (Python)
 
-| Analyzer | WARN | FAIL |
-|---|---|---|
-| `mutmut` | score < 80% | score < 60% |
-| `flake8` | — | any violation |
-| `coverage` | score < 80% | score < 70% |
-| `bandit` | medium > 3 | any HIGH finding |
-| `radon` | score < 70% | score < 50% |
+| Analyzer | WARN | FAIL | Approach |
+|---|---|---|---|
+| `mutmut` | score < 80% | score < 60% | Score = killed / total × 100. Surviving mutants are test gaps. |
+| `flake8` | — | issue_count > 0 | Zero-tolerance: any PEP 8 / style violation fails the gate. Score is relative to a configurable `max_issue_budget`. |
+| `coverage` | score < 80% | score < 70% | Score = line coverage % reported by `coverage report`. |
+| `bandit` | — | any HIGH finding or medium > 5 | Severity-weighted score: HIGH × 50 + MEDIUM × 10 + LOW × 1 penalty subtracted from 100. Gate is hard on HIGH, tolerant on LOW. |
+| `radon` | score < 70% | score < 50% | Score = mean Maintainability Index across all modules (0–100). Files ranked C–F count as `issue_count`. |
 
 ---
 
@@ -131,6 +148,17 @@ python -m venv .venv
 source .venv/bin/activate
 pip install -e ".[dev]"
 ```
+
+### Dev dependencies
+
+The `[dev]` extra installs:
+
+| Tool | Purpose |
+|---|---|
+| `pytest` | Test runner |
+| `pytest-cov` | Coverage reporting for the engine's own tests |
+| `mutmut` | Mutation testing of the engine itself |
+| `ruff` | Planned — see Roadmap Phase 3 |
 
 ### Run the test suite
 
@@ -161,7 +189,7 @@ on:
 
 jobs:
   qa:
-    uses: sebco-labs/sebo-qa-engine/.github/workflows/python-qa.yml@main
+    uses: PlatformUnityCI/sebco-qa-engine/.github/workflows/python-qa.yml@main
     with:
       python-version: "3.12"
       analyzers: "flake8,coverage,bandit,radon,mutmut"
@@ -175,7 +203,7 @@ jobs:
 | Input | Default | Description |
 |---|---|---|
 | `python-version` | `"3.12"` | Python version to use |
-| `analyzers` | `"flake8,coverage,bandit,radon"` | Comma-separated list of analyzers to run |
+| `analyzers` | `"flake8,coverage,bandit,radon, mutmut"` | Comma-separated list of analyzers to run. Valid values: `flake8`, `coverage`, `bandit`, `radon`, `mutmut` |
 | `output-dir` | `"qa-report"` | Directory where QA artifacts are written |
 | `engine-ref` | `"main"` | Branch/tag of this engine to install |
 | `install-command` | `"pip install -e .[dev] --quiet"` | Command to install consumer repo dependencies |
@@ -313,13 +341,29 @@ The engine picks it up automatically when you add it to the `Runner`'s analyzer 
 
 ---
 
+## CI / Governance workflows
+
+This repository ships three workflows of its own:
+
+| Workflow | File | Trigger | Purpose |
+|---|---|---|---|
+| **Python QA Engine** | `python-qa.yml` | `workflow_call` (from consumer repos) | Reusable QA pipeline — runs analyzers, aggregates, comments on PRs |
+| **PR Governance** | `pr-governance.yml` | `pull_request_target` → `main` | Enforces PR conventions via `PlatformUnityCI/cross-platform-guard` |
+| **Release** | `release.yml` | push → `main` | Semantic versioning and GitHub releases via `PlatformUnityCI/cross-platform-guard` |
+
+Releases follow [Conventional Commits](https://www.conventionalcommits.org/) and are published automatically with semantic-release (configured in `.releaserc.json`).
+
+Dependency updates are managed by **Dependabot** (weekly, for both `pip` and `github-actions`).
+
+---
+
 ## Roadmap
 
 | Phase | Status | Content |
 |---|---|---|
 | 1 | ✅ Done | Base structure, contracts, mutmut analyzer |
 | 2 | ✅ Done | flake8, coverage, bandit, radon + aggregation layer + PR comment |
-| 3 | Planned | Threshold overrides via config file, multi-language support, public datasets |
+| 3 | Planned | Threshold overrides via config file, multi-language support (Go, Java, JavaScript), ruff integration for engine linting, public datasets |
 
 ---
 
