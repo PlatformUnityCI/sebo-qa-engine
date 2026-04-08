@@ -131,6 +131,19 @@ class CoverageAnalyzer(BaseAnalyzer):
 
     def normalize(self, raw_output: str) -> AnalyzerResult:
         """Parse raw coverage report output into a structured AnalyzerResult."""
+        # Detect sentinel strings injected by run() on hard failures.
+        # These mean the tool never ran — semantically ERROR, not FAILED.
+        if raw_output.startswith("[TIMEOUT]") or raw_output.startswith("[ERROR]"):
+            return AnalyzerResult(
+                analyzer=self.name,
+                language=self.language,
+                execution_status=ExecutionStatus.ERROR,
+                metrics=RunMetrics(),
+                details=[],
+                raw_output=raw_output,
+                error_message=raw_output,
+            )
+
         total_match = _TOTAL_RE.search(raw_output)
 
         if not total_match:
@@ -227,6 +240,9 @@ class CoverageAnalyzer(BaseAnalyzer):
             "analyzer": result.analyzer,
             "execution_status": result.execution_status.value,
             "score": m.score,
+            # score_percent is an explicit alias for dashboards / reporters
+            # that look for a named percent field rather than the raw float.
+            "score_percent": round(m.score, 2) if m.score is not None else None,
             "stmts": m.total,
             "missed": m.issue_count,
             "covered": m.ok_count,
@@ -236,7 +252,7 @@ class CoverageAnalyzer(BaseAnalyzer):
     @staticmethod
     def _to_summary_md(result: AnalyzerResult) -> str:
         m = result.metrics
-        score_str = f"{m.score}%" if m.score is not None else "N/A"
+        score_str = f"{m.score:.0f}%" if m.score is not None else "N/A"
         stmts_str = str(m.total) if m.total is not None else "N/A"
         missed_str = str(m.issue_count) if m.issue_count is not None else "N/A"
         covered_str = str(m.ok_count) if m.ok_count is not None else "N/A"

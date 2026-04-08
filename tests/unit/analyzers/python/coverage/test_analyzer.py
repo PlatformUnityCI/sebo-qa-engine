@@ -279,7 +279,8 @@ class TestCoverageAnalyzerWriteArtifacts:
         analyzer, result = self._get_result_and_analyzer(tmp_path)
         analyzer.write_artifacts(result)
         md = result.artifacts["summary_md"].read_text()
-        assert "75.0%" in md
+        # Score is formatted without decimal — "75%" not "75.0%"
+        assert "75%" in md
 
     def test_summary_markdown_contains_file_table(self, tmp_path):
         analyzer, result = self._get_result_and_analyzer(tmp_path)
@@ -344,3 +345,84 @@ class TestCoverageAnalyzerFullPipeline:
 
         assert result.execution_status == ExecutionStatus.ERROR
         assert "boom" in result.error_message
+
+
+# ---------------------------------------------------------------------------
+# Tests: normalize() — sentinel strings from run() map to ERROR status
+# ---------------------------------------------------------------------------
+
+class TestCoverageAnalyzerNormalizeSentinels:
+    """Verify that [TIMEOUT] and [ERROR] sentinels injected by run() produce
+    ExecutionStatus.ERROR — not FAILED — in normalize()."""
+
+    def test_timeout_sentinel_yields_error_status(self, tmp_path):
+        analyzer = _make_analyzer(tmp_path)
+        raw = "[TIMEOUT] Command timed out after 120s: coverage report --format=text"
+        result = analyzer.normalize(raw)
+        assert result.execution_status == ExecutionStatus.ERROR
+
+    def test_error_sentinel_yields_error_status(self, tmp_path):
+        analyzer = _make_analyzer(tmp_path)
+        raw = "[ERROR] Command not found: coverage"
+        result = analyzer.normalize(raw)
+        assert result.execution_status == ExecutionStatus.ERROR
+
+    def test_timeout_sentinel_preserves_raw_output(self, tmp_path):
+        analyzer = _make_analyzer(tmp_path)
+        raw = "[TIMEOUT] Command timed out after 120s: coverage report --format=text"
+        result = analyzer.normalize(raw)
+        assert result.raw_output == raw
+
+    def test_error_sentinel_populates_error_message(self, tmp_path):
+        analyzer = _make_analyzer(tmp_path)
+        raw = "[ERROR] Command not found: coverage"
+        result = analyzer.normalize(raw)
+        assert result.error_message == raw
+
+    def test_timeout_sentinel_has_no_score(self, tmp_path):
+        analyzer = _make_analyzer(tmp_path)
+        raw = "[TIMEOUT] Command timed out after 120s: coverage report --format=text"
+        result = analyzer.normalize(raw)
+        assert result.metrics.score is None
+
+    def test_error_sentinel_has_empty_details(self, tmp_path):
+        analyzer = _make_analyzer(tmp_path)
+        raw = "[ERROR] Command not found: coverage"
+        result = analyzer.normalize(raw)
+        assert result.details == []
+
+
+# ---------------------------------------------------------------------------
+# Tests: _to_summary_json — score_percent field and score formatting
+# ---------------------------------------------------------------------------
+
+class TestCoverageAnalyzerSummaryJson:
+    def _get_summary_data(self, tmp_path) -> dict:
+        analyzer = _make_analyzer(tmp_path)
+        result = analyzer.normalize(_COVERAGE_OUTPUT_SIMPLE)
+        analyzer.write_artifacts(result)
+        return json.loads(result.artifacts["summary_json"].read_text())
+
+    def test_summary_json_has_score_percent_field(self, tmp_path):
+        data = self._get_summary_data(tmp_path)
+        assert "score_percent" in data
+
+    def test_summary_json_score_percent_equals_score(self, tmp_path):
+        data = self._get_summary_data(tmp_path)
+        assert data["score_percent"] == pytest.approx(75.0)
+
+    def test_summary_json_score_percent_none_when_failed(self, tmp_path):
+        analyzer = _make_analyzer(tmp_path)
+        result = analyzer.normalize(_COVERAGE_OUTPUT_NO_TOTAL)
+        analyzer.write_artifacts(result)
+        data = json.loads(result.artifacts["summary_json"].read_text())
+        assert data["score_percent"] is None
+
+    def test_summary_markdown_score_no_decimal(self, tmp_path):
+        analyzer = _make_analyzer(tmp_path)
+        result = analyzer.normalize(_COVERAGE_OUTPUT_SIMPLE)
+        analyzer.write_artifacts(result)
+        md = result.artifacts["summary_md"].read_text()
+        # Should show "75%" not "75.0%"
+        assert "75%" in md
+        assert "75.0%" not in md
