@@ -107,7 +107,15 @@ class BanditAnalyzer(BaseAnalyzer):
         if proc.returncode not in (0, 1):
             logger.warning("[bandit] Unexpected exit code %d", proc.returncode)
 
-        return (proc.stdout or "") + (proc.stderr or "")
+        # Bandit writes JSON to stdout and progress/logging text to stderr.
+        # Concatenating both breaks json.loads — return only stdout.
+        # If stdout is empty on an unexpected exit code, surface stderr so
+        # normalize() can detect the failure and set execution_status=FAILED.
+        stdout = proc.stdout or ""
+        if not stdout.strip() and proc.returncode not in (0, 1):
+            stderr = proc.stderr or ""
+            return stderr if stderr.strip() else "[ERROR] bandit produced no output"
+        return stdout
 
     def normalize(self, raw_output: str) -> AnalyzerResult:
         """Parse bandit JSON output into a structured AnalyzerResult.
