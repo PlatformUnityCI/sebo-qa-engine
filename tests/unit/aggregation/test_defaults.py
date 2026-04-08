@@ -51,6 +51,6 @@ class TestDefaultPolicies:
         policy = DEFAULT_POLICIES["bandit"]
         assert policy.max_high == 0
 
-    def test_bandit_max_medium_is_three(self):
+    def test_bandit_max_medium_is_five(self):
         policy = DEFAULT_POLICIES["bandit"]
-        assert policy.max_medium == 3
+        assert policy.max_medium == 5
