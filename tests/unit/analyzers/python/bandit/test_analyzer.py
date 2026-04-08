@@ -214,6 +214,38 @@ class TestBanditAnalyzerRun:
 
         assert raw
 
+    def test_run_returns_only_stdout_not_stderr(self, tmp_path):
+        """Bandit emits JSON to stdout and logging text to stderr.
+        Concatenating both breaks json.loads — run() must return only stdout."""
+        analyzer = _make_analyzer(tmp_path)
+
+        proc = MagicMock()
+        proc.stdout = BANDIT_JSON_WITH_FINDINGS
+        proc.stderr = "[main]  INFO    profile include tests: None\n[main]  INFO    running on 10 files"
+        proc.returncode = 1
+
+        with patch("subprocess.run", return_value=proc):
+            raw = analyzer.run()
+
+        # Must be parseable JSON — stderr noise must not be included
+        data = json.loads(raw)
+        assert "results" in data
+
+    def test_run_surfaces_stderr_when_stdout_empty_on_error(self, tmp_path):
+        """If bandit exits unexpectedly with no stdout, return stderr so
+        normalize() can produce a FAILED result instead of silently succeeding."""
+        analyzer = _make_analyzer(tmp_path)
+
+        proc = MagicMock()
+        proc.stdout = ""
+        proc.stderr = "bandit: error: something went wrong"
+        proc.returncode = 2
+
+        with patch("subprocess.run", return_value=proc):
+            raw = analyzer.run()
+
+        assert "something went wrong" in raw
+
 
 # ---------------------------------------------------------------------------
 # Tests: normalize()
