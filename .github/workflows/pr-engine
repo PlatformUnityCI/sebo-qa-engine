@@ -1,0 +1,39 @@
+name: QA Engine
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+  qa-engine:
+    if: github.event_name == 'pull_request'
+    needs: build
+    uses: PlatformUnityCI/sebco-qa-engine/.github/workflows/python-qa.yml@main
+    with:
+      python-version: "3.12"
+      analyzers: "mutmut,flake8,coverage,bandit,radon"
+      output-dir: "qa-report"
+    secrets:
+      token: ${{ secrets.GITHUB_TOKEN }}
+
+  qa-guard:
+    if: github.event_name == 'pull_request'
+    needs:
+      - build
+      - qa-engine
+    uses: PlatformUnityCI/cross-platform-guard/.github/workflows/ai-review.yml@main
+    with:
+      language: python
+    secrets:
+      token: ${{ secrets.GITHUB_TOKEN }}
