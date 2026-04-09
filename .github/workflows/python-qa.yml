@@ -32,15 +32,6 @@ on:
         description: "Directory where QA artifacts will be written"
         type: string
         default: "qa-report"
-      engine-ref:
-        description: "Branch/tag of sebco-qa-engine to use"
-        type: string
-        default: "main"
-      install-command:
-        description: "Optional custom install command for consumer repository dependencies"
-        required: false
-        type: string
-        default: ""
     secrets:
       token:
         description: "GitHub token for PR comments"
@@ -76,33 +67,19 @@ jobs:
       - name: Install consumer dependencies
         shell: bash
         run: |
-          set -e
+          set -euo pipefail
       
           echo "🔧 Installing dependencies..."
       
-          INSTALL_CMD="${{ inputs.install-command }}"
+          python -m pip install --upgrade pip
       
-          # Trim espacios (clave)
-          INSTALL_CMD="$(echo "$INSTALL_CMD" | xargs)"
-      
-          if [ -n "$(printf '%s' "$INSTALL_CMD" | tr -d '[:space:]')" ]; then
-            echo "👉 Using custom install-command"
-            eval "$INSTALL_CMD"
+          if [ -f "requirements.txt" ]; then
+            echo "📄 Installing from requirements.txt"
+            pip install -r requirements.txt
           else
-            echo "👉 No install-command provided. Using default smart install strategy"
-      
-            if [ -f "pyproject.toml" ] || [ -f "setup.py" ]; then
-              echo "📦 Detected Python package"
-              pip install -e .[dev] --quiet || echo "⚠️ Editable install failed, falling back..."
-            fi
-      
-            if [ -f "requirements.txt" ]; then
-              echo "📄 Installing from requirements.txt"
-              pip install -r requirements.txt || true "⚠️ requirements.txt install failed, continuing..."
-            fi
-      
-            echo "🧪 Ensuring analyzers are installed"
-            pip install flake8 coverage bandit radon mutmut
+            echo "❌ No requirements.txt found in repository root"
+            echo "👉 Please add a requirements.txt with the required analyzers"
+            exit 1
           fi
 
       - name: Install QA engine
