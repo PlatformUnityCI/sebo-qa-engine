@@ -36,10 +36,6 @@ on:
         description: "Branch/tag of sebco-qa-engine to use"
         type: string
         default: "main"
-      install-command:
-        description: "Command to install consumer repo dependencies"
-        type: string
-        default: "pip install -e .[dev] --quiet"
     secrets:
       token:
         description: "GitHub token for PR comments"
@@ -73,7 +69,22 @@ jobs:
             ${{ runner.os }}-pip-
 
       - name: Install consumer dependencies
-        run: ${{ inputs.install-command }}
+        shell: bash
+        run: |
+          set -euo pipefail
+      
+          echo "🔧 Installing dependencies..."
+      
+          python -m pip install --upgrade pip
+      
+          if [ -f "requirements.txt" ]; then
+            echo "📄 Installing from requirements.txt"
+            pip install -r requirements.txt
+          else
+            echo "❌ No requirements.txt found in repository root"
+            echo "👉 Please add a requirements.txt with the required analyzers"
+            exit 1
+          fi
 
       - name: Install QA engine
         run: |
