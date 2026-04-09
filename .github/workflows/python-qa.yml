@@ -32,6 +32,10 @@ on:
         description: "Directory where QA artifacts will be written"
         type: string
         default: "qa-report"
+      engine-ref:
+        description: "Branch/tag of sebco-qa-engine to use"
+        type: string
+        default: "main"
     secrets:
       token:
         description: "GitHub token for PR comments"
