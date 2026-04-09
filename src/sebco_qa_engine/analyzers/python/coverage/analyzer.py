@@ -152,7 +152,7 @@ class CoverageAnalyzer(BaseAnalyzer):
         logger.debug("[coverage] Running: %s", " ".join(cmd))
 
         try:
-            proc = subprocess.run(
+            proc = subprocess.run(  # noqa: S603
                 cmd,
                 capture_output=True,
                 text=True,
@@ -218,12 +218,14 @@ class CoverageAnalyzer(BaseAnalyzer):
             filename = m.group(1)
             if filename == "TOTAL":
                 continue
-            details.append({
-                "file": filename,
-                "stmts": int(m.group(2)),
-                "miss": int(m.group(3)),
-                "cover_pct": int(m.group(4)),
-            })
+            details.append(
+                {
+                    "file": filename,
+                    "stmts": int(m.group(2)),
+                    "miss": int(m.group(3)),
+                    "cover_pct": int(m.group(4)),
+                }
+            )
 
         return AnalyzerResult(
             analyzer=self.name,
@@ -310,11 +312,7 @@ class CoverageAnalyzer(BaseAnalyzer):
                 f"| `{d['file']}` | {d['stmts']} | {d['miss']} | {d['cover_pct']}% |"
                 for d in first_20
             )
-            table = (
-                "| File | Stmts | Miss | Cover |\n"
-                "|------|------:|-----:|------:|"
-                f"\n{rows}"
-            )
+            table = f"| File | Stmts | Miss | Cover |\n|------|------:|-----:|------:|\n{rows}"
         else:
             table = "No per-file data available."
 

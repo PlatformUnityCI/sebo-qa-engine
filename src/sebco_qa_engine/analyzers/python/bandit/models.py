@@ -34,8 +34,8 @@ class BanditFinding:
 
     filename: str
     line_number: int
-    severity: str     # "HIGH", "MEDIUM", "LOW"
-    confidence: str   # "HIGH", "MEDIUM", "LOW"
-    test_id: str      # e.g. "B105"
-    test_name: str    # e.g. "hardcoded_password_string"
+    severity: str  # "HIGH", "MEDIUM", "LOW"
+    confidence: str  # "HIGH", "MEDIUM", "LOW"
+    test_id: str  # e.g. "B105"
+    test_name: str  # e.g. "hardcoded_password_string"
     issue_text: str

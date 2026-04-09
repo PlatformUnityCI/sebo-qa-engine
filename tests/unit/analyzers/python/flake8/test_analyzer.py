@@ -17,10 +17,10 @@ from sebco_qa_engine.analyzers.python.flake8.analyzer import Flake8Analyzer
 from sebco_qa_engine.analyzers.python.flake8.config import Flake8Config
 from sebco_qa_engine.core.models import AnalyzerResult, ExecutionStatus
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_proc(stdout: str, returncode: int = 0) -> MagicMock:
     proc = MagicMock()
@@ -47,6 +47,7 @@ _NO_VIOLATIONS_OUTPUT = ""
 # ---------------------------------------------------------------------------
 # Tests: run()
 # ---------------------------------------------------------------------------
+
 
 class TestFlake8AnalyzerRun:
     def test_run_calls_flake8_with_default_paths(self, tmp_path):
@@ -108,7 +109,9 @@ class TestFlake8AnalyzerRun:
     def test_run_handles_timeout(self, tmp_path):
         analyzer = _make_analyzer(tmp_path, config=Flake8Config(timeout=5))
 
-        with patch("subprocess.run", side_effect=subprocess.TimeoutExpired(cmd="flake8", timeout=5)):
+        with patch(
+            "subprocess.run", side_effect=subprocess.TimeoutExpired(cmd="flake8", timeout=5)
+        ):
             raw = analyzer.run()
 
         assert "[TIMEOUT]" in raw
@@ -139,6 +142,7 @@ class TestFlake8AnalyzerRun:
 # ---------------------------------------------------------------------------
 # Tests: normalize()
 # ---------------------------------------------------------------------------
+
 
 class TestFlake8AnalyzerNormalize:
     def test_violations_parsed_correctly(self, tmp_path):
@@ -277,6 +281,7 @@ class TestFlake8AnalyzerNormalize:
 # Tests: write_artifacts()
 # ---------------------------------------------------------------------------
 
+
 class TestFlake8AnalyzerWriteArtifacts:
     def _get_result_and_analyzer(self, tmp_path):
         analyzer = _make_analyzer(tmp_path)
@@ -388,6 +393,7 @@ class TestFlake8AnalyzerWriteArtifacts:
 # ---------------------------------------------------------------------------
 # Tests: full analyze() pipeline
 # ---------------------------------------------------------------------------
+
 
 class TestFlake8AnalyzerFullPipeline:
     def test_analyze_returns_analyzer_result(self, tmp_path):

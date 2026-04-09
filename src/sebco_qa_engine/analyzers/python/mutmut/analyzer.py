@@ -151,14 +151,12 @@ class MutmutAnalyzer(BaseAnalyzer):
         metrics = RunMetrics(
             score=score,
             total=total,
-            ok_count=killed,       # killed mutants = tests that caught the mutation
+            ok_count=killed,  # killed mutants = tests that caught the mutation
             issue_count=survived_count,  # surviving mutants = test gaps
         )
 
         details = self._parse_mutant_details(surviving_ids, show_section)
-        execution_status = (
-            ExecutionStatus.SUCCESS if killed is not None else ExecutionStatus.FAILED
-        )
+        execution_status = ExecutionStatus.SUCCESS if killed is not None else ExecutionStatus.FAILED
 
         return AnalyzerResult(
             analyzer=self.name,
@@ -217,7 +215,7 @@ class MutmutAnalyzer(BaseAnalyzer):
         logger.debug("[mutmut] Running: %s", " ".join(cmd))
 
         try:
-            proc = subprocess.run(
+            proc = subprocess.run(  # noqa: S603
                 cmd,
                 capture_output=True,
                 text=True,

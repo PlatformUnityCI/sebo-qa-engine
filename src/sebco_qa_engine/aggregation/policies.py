@@ -63,6 +63,7 @@ class GateResult:
 # Base contract
 # ---------------------------------------------------------------------------
 
+
 class QualityGatePolicy(ABC):
     """Abstract base for all quality gate policies.
 
@@ -83,6 +84,7 @@ class QualityGatePolicy(ABC):
 # Shared guard
 # ---------------------------------------------------------------------------
 
+
 def _guard_execution(result: AnalyzerResult) -> GateResult | None:
     """Return a SKIP GateResult if execution did not succeed, else None.
 
@@ -100,6 +102,7 @@ def _guard_execution(result: AnalyzerResult) -> GateResult | None:
 # ---------------------------------------------------------------------------
 # ScoreGatePolicy
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class ScoreThresholds:
@@ -162,29 +165,20 @@ class ScoreGatePolicy(QualityGatePolicy):
         if score < self.thresholds.fail_below:
             return GateResult(
                 verdict=GateVerdict.FAIL,
-                reason=(
-                    f"score {score}% is below fail threshold "
-                    f"({self.thresholds.fail_below}%)"
-                ),
+                reason=(f"score {score}% is below fail threshold ({self.thresholds.fail_below}%)"),
                 evaluated_on="score",
             )
 
         if score < self.thresholds.warn_below:
             return GateResult(
                 verdict=GateVerdict.WARN,
-                reason=(
-                    f"score {score}% is below warn threshold "
-                    f"({self.thresholds.warn_below}%)"
-                ),
+                reason=(f"score {score}% is below warn threshold ({self.thresholds.warn_below}%)"),
                 evaluated_on="score",
             )
 
         return GateResult(
             verdict=GateVerdict.PASS,
-            reason=(
-                f"score {score}% meets warn threshold "
-                f"({self.thresholds.warn_below}%)"
-            ),
+            reason=(f"score {score}% meets warn threshold ({self.thresholds.warn_below}%)"),
             evaluated_on="score",
         )
 
@@ -192,6 +186,7 @@ class ScoreGatePolicy(QualityGatePolicy):
 # ---------------------------------------------------------------------------
 # IssueCountPolicy
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class IssueCountPolicy(QualityGatePolicy):
@@ -268,6 +263,7 @@ class IssueCountPolicy(QualityGatePolicy):
 # SeverityPolicy
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class SeverityPolicy(QualityGatePolicy):
     """Evaluates severity breakdown from ``metrics.extra["severity"]``.
@@ -323,18 +319,14 @@ class SeverityPolicy(QualityGatePolicy):
         if self.max_high is not None and high > self.max_high:
             return GateResult(
                 verdict=GateVerdict.FAIL,
-                reason=(
-                    f"severity.high {high} exceeds max_high ({self.max_high})"
-                ),
+                reason=(f"severity.high {high} exceeds max_high ({self.max_high})"),
                 evaluated_on="severity.high",
             )
 
         if self.max_medium is not None and medium > self.max_medium:
             return GateResult(
                 verdict=GateVerdict.WARN,
-                reason=(
-                    f"severity.medium {medium} exceeds max_medium ({self.max_medium})"
-                ),
+                reason=(f"severity.medium {medium} exceeds max_medium ({self.max_medium})"),
                 evaluated_on="severity.medium",
             )
 

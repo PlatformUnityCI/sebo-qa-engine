@@ -52,7 +52,7 @@ class GateVerdict(str, Enum):
         - required signal (e.g. score) was None
     """
 
-    PASS = "pass"
+    PASS = "pass"  # noqa: S105  # nosec B105
     WARN = "warn"
     FAIL = "fail"
     SKIP = "skip"

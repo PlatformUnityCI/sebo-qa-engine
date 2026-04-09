@@ -102,7 +102,7 @@ class Flake8Analyzer(BaseAnalyzer):
         logger.debug("[flake8] Running: %s", " ".join(cmd))
 
         try:
-            proc = subprocess.run(
+            proc = subprocess.run(  # noqa: S603
                 cmd,
                 capture_output=True,
                 text=True,
@@ -137,13 +137,15 @@ class Flake8Analyzer(BaseAnalyzer):
 
             m = _VIOLATION_RE.match(line)
             if m:
-                violations.append({
-                    "file": m.group(1),
-                    "line": int(m.group(2)),
-                    "col": int(m.group(3)),
-                    "code": m.group(4),
-                    "message": m.group(5),
-                })
+                violations.append(
+                    {
+                        "file": m.group(1),
+                        "line": int(m.group(2)),
+                        "col": int(m.group(3)),
+                        "code": m.group(4),
+                        "message": m.group(5),
+                    }
+                )
             else:
                 # Unexpected non-empty line that doesn't match the violation pattern
                 parse_error = True
@@ -255,9 +257,7 @@ class Flake8Analyzer(BaseAnalyzer):
         m = result.metrics
         issue_str = str(m.issue_count) if m.issue_count is not None else "N/A"
         score_str = (
-            f"{m.extra['score_percent']}%"
-            if m.extra.get("score_percent") is not None
-            else "N/A"
+            f"{m.extra['score_percent']}%" if m.extra.get("score_percent") is not None else "N/A"
         )
         budget_str = str(m.extra.get("max_issue_budget", "N/A"))
         codes = m.extra.get("violation_codes", [])

@@ -17,10 +17,10 @@ from sebco_qa_engine.analyzers.python.bandit.config import BanditConfig
 from sebco_qa_engine.analyzers.python.bandit.models import BanditFinding
 from sebco_qa_engine.core.models import ExecutionStatus
 
-
 # ---------------------------------------------------------------------------
 # Fixtures — synthetic bandit output
 # ---------------------------------------------------------------------------
+
 
 def _make_proc(stdout: str, returncode: int = 0) -> MagicMock:
     proc = MagicMock()
@@ -34,67 +34,72 @@ def _make_analyzer(tmp_path: Path, config: BanditConfig | None = None) -> Bandit
     return BanditAnalyzer(output_dir=tmp_path / "qa-report" / "bandit", config=config)
 
 
-BANDIT_JSON_WITH_FINDINGS = json.dumps({
-    "errors": [],
-    "generated_at": "2024-01-01T00:00:00Z",
-    "metrics": {
-        "_totals": {
-            "CONFIDENCE.HIGH": 1,
-            "CONFIDENCE.LOW": 0,
-            "CONFIDENCE.MEDIUM": 1,
-            "CONFIDENCE.UNDEFINED": 0,
-            "SEVERITY.HIGH": 1,
-            "SEVERITY.LOW": 0,
-            "SEVERITY.MEDIUM": 1,
-            "SEVERITY.UNDEFINED": 0,
-            "loc": 100,
-            "nosec": 0,
-        }
-    },
-    "results": [
-        {
-            "filename": "src/foo.py",
-            "line_number": 10,
-            "issue_severity": "HIGH",
-            "issue_confidence": "HIGH",
-            "test_id": "B105",
-            "test_name": "hardcoded_password_string",
-            "issue_text": "Possible hardcoded password: 'secret'",
+BANDIT_JSON_WITH_FINDINGS = json.dumps(
+    {
+        "errors": [],
+        "generated_at": "2024-01-01T00:00:00Z",
+        "metrics": {
+            "_totals": {
+                "CONFIDENCE.HIGH": 1,
+                "CONFIDENCE.LOW": 0,
+                "CONFIDENCE.MEDIUM": 1,
+                "CONFIDENCE.UNDEFINED": 0,
+                "SEVERITY.HIGH": 1,
+                "SEVERITY.LOW": 0,
+                "SEVERITY.MEDIUM": 1,
+                "SEVERITY.UNDEFINED": 0,
+                "loc": 100,
+                "nosec": 0,
+            }
         },
-        {
-            "filename": "src/bar.py",
-            "line_number": 5,
-            "issue_severity": "MEDIUM",
-            "issue_confidence": "MEDIUM",
-            "test_id": "B106",
-            "test_name": "hardcoded_password_funcarg",
-            "issue_text": "Possible hardcoded password as func arg",
-        },
-    ],
-})
+        "results": [
+            {
+                "filename": "src/foo.py",
+                "line_number": 10,
+                "issue_severity": "HIGH",
+                "issue_confidence": "HIGH",
+                "test_id": "B105",
+                "test_name": "hardcoded_password_string",
+                "issue_text": "Possible hardcoded password: 'secret'",
+            },
+            {
+                "filename": "src/bar.py",
+                "line_number": 5,
+                "issue_severity": "MEDIUM",
+                "issue_confidence": "MEDIUM",
+                "test_id": "B106",
+                "test_name": "hardcoded_password_funcarg",
+                "issue_text": "Possible hardcoded password as func arg",
+            },
+        ],
+    }
+)
 
 # HIGH=1, MED=1, LOW=0  →  score = max(0, 100 - (1*50 + 1*10 + 0*1)) = 40
 _EXPECTED_SCORE_WITH_FINDINGS = 40.0
 
-BANDIT_JSON_NO_FINDINGS = json.dumps({
-    "errors": [],
-    "generated_at": "2024-01-01T00:00:00Z",
-    "metrics": {
-        "_totals": {
-            "SEVERITY.HIGH": 0,
-            "SEVERITY.MEDIUM": 0,
-            "SEVERITY.LOW": 0,
-            "loc": 50,
-            "nosec": 0,
-        }
-    },
-    "results": [],
-})
+BANDIT_JSON_NO_FINDINGS = json.dumps(
+    {
+        "errors": [],
+        "generated_at": "2024-01-01T00:00:00Z",
+        "metrics": {
+            "_totals": {
+                "SEVERITY.HIGH": 0,
+                "SEVERITY.MEDIUM": 0,
+                "SEVERITY.LOW": 0,
+                "loc": 50,
+                "nosec": 0,
+            }
+        },
+        "results": [],
+    }
+)
 
 
 # ---------------------------------------------------------------------------
 # Tests: BanditFinding model
 # ---------------------------------------------------------------------------
+
 
 class TestBanditFinding:
     def test_construction(self):
@@ -119,6 +124,7 @@ class TestBanditFinding:
 # ---------------------------------------------------------------------------
 # Tests: run()
 # ---------------------------------------------------------------------------
+
 
 class TestBanditAnalyzerRun:
     def test_run_calls_bandit_with_json_format(self, tmp_path):
@@ -183,7 +189,9 @@ class TestBanditAnalyzerRun:
 
         analyzer = _make_analyzer(tmp_path, config=BanditConfig(timeout=1))
 
-        with patch("subprocess.run", side_effect=subprocess.TimeoutExpired(cmd="bandit", timeout=1)):
+        with patch(
+            "subprocess.run", side_effect=subprocess.TimeoutExpired(cmd="bandit", timeout=1)
+        ):
             raw = analyzer.run()
 
         assert "[TIMEOUT]" in raw
@@ -221,7 +229,9 @@ class TestBanditAnalyzerRun:
 
         proc = MagicMock()
         proc.stdout = BANDIT_JSON_WITH_FINDINGS
-        proc.stderr = "[main]  INFO    profile include tests: None\n[main]  INFO    running on 10 files"
+        proc.stderr = (
+            "[main]  INFO    profile include tests: None\n[main]  INFO    running on 10 files"
+        )
         proc.returncode = 1
 
         with patch("subprocess.run", return_value=proc):
@@ -250,6 +260,7 @@ class TestBanditAnalyzerRun:
 # ---------------------------------------------------------------------------
 # Tests: normalize()
 # ---------------------------------------------------------------------------
+
 
 class TestBanditAnalyzerNormalize:
     def test_execution_status_success_on_valid_json(self, tmp_path):
@@ -341,6 +352,7 @@ class TestBanditAnalyzerNormalize:
 # Tests: write_artifacts()
 # ---------------------------------------------------------------------------
 
+
 class TestBanditAnalyzerWriteArtifacts:
     def _get_result_and_analyzer(self, tmp_path):
         analyzer = _make_analyzer(tmp_path)
@@ -416,6 +428,7 @@ class TestBanditAnalyzerWriteArtifacts:
 # Tests: full analyze() pipeline
 # ---------------------------------------------------------------------------
 
+
 class TestBanditAnalyzerFullPipeline:
     def test_analyze_returns_analyzer_result(self, tmp_path):
         from sebco_qa_engine.core.models import AnalyzerResult
@@ -453,6 +466,7 @@ class TestBanditAnalyzerFullPipeline:
 # Tests: severity-weighted score
 # ---------------------------------------------------------------------------
 
+
 class TestBanditAnalyzerScore:
     def test_score_uses_severity_weights(self, tmp_path):
         # HIGH=1, MED=1, LOW=0 → 100 - (1×50 + 1×10 + 0×1) = 40
@@ -467,26 +481,40 @@ class TestBanditAnalyzerScore:
 
     def test_score_only_low_findings(self, tmp_path):
         # 15 LOW findings → 100 - (0×50 + 0×10 + 15×1) = 85
-        data = json.dumps({
-            "errors": [],
-            "metrics": {"_totals": {
-                "SEVERITY.HIGH": 0, "SEVERITY.MEDIUM": 0, "SEVERITY.LOW": 15, "loc": 200,
-            }},
-            "results": [],
-        })
+        data = json.dumps(
+            {
+                "errors": [],
+                "metrics": {
+                    "_totals": {
+                        "SEVERITY.HIGH": 0,
+                        "SEVERITY.MEDIUM": 0,
+                        "SEVERITY.LOW": 15,
+                        "loc": 200,
+                    }
+                },
+                "results": [],
+            }
+        )
         analyzer = _make_analyzer(tmp_path)
         result = analyzer.normalize(data)
         assert result.metrics.score == pytest.approx(85.0)
 
     def test_score_clamped_to_zero_on_severe_findings(self, tmp_path):
         # 3 HIGH findings → 100 - 150 = clamped to 0
-        data = json.dumps({
-            "errors": [],
-            "metrics": {"_totals": {
-                "SEVERITY.HIGH": 3, "SEVERITY.MEDIUM": 0, "SEVERITY.LOW": 0, "loc": 500,
-            }},
-            "results": [],
-        })
+        data = json.dumps(
+            {
+                "errors": [],
+                "metrics": {
+                    "_totals": {
+                        "SEVERITY.HIGH": 3,
+                        "SEVERITY.MEDIUM": 0,
+                        "SEVERITY.LOW": 0,
+                        "loc": 500,
+                    }
+                },
+                "results": [],
+            }
+        )
         analyzer = _make_analyzer(tmp_path)
         result = analyzer.normalize(data)
         assert result.metrics.score == pytest.approx(0.0)
@@ -495,13 +523,20 @@ class TestBanditAnalyzerScore:
         cfg = BanditConfig(high_weight=10, medium_weight=5, low_weight=0)
         analyzer = BanditAnalyzer(output_dir=tmp_path / "qa-report" / "bandit", config=cfg)
         # HIGH=1, MED=2 → 100 - (1×10 + 2×5) = 80
-        data = json.dumps({
-            "errors": [],
-            "metrics": {"_totals": {
-                "SEVERITY.HIGH": 1, "SEVERITY.MEDIUM": 2, "SEVERITY.LOW": 0, "loc": 100,
-            }},
-            "results": [],
-        })
+        data = json.dumps(
+            {
+                "errors": [],
+                "metrics": {
+                    "_totals": {
+                        "SEVERITY.HIGH": 1,
+                        "SEVERITY.MEDIUM": 2,
+                        "SEVERITY.LOW": 0,
+                        "loc": 100,
+                    }
+                },
+                "results": [],
+            }
+        )
         result = analyzer.normalize(data)
         assert result.metrics.score == pytest.approx(80.0)
 
@@ -533,6 +568,7 @@ class TestBanditAnalyzerScore:
 # Tests: error_message populated on ERROR status
 # ---------------------------------------------------------------------------
 
+
 class TestBanditAnalyzerErrorMessage:
     def test_error_sentinel_populates_error_message(self, tmp_path):
         analyzer = _make_analyzer(tmp_path)
@@ -555,6 +591,7 @@ class TestBanditAnalyzerErrorMessage:
 # ---------------------------------------------------------------------------
 # Tests: summary JSON / normalized JSON have score fields
 # ---------------------------------------------------------------------------
+
 
 class TestBanditAnalyzerSummaryJson:
     def _get_summary_data(self, tmp_path) -> dict:

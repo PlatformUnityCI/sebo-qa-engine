@@ -123,14 +123,14 @@ class AnalyzerResult:
     (QualityGatePolicy). This model only records what the tool produced.
     """
 
-    analyzer: str                                      # e.g. "mutmut", "flake8"
-    language: str                                      # e.g. "python"
+    analyzer: str  # e.g. "mutmut", "flake8"
+    language: str  # e.g. "python"
     execution_status: ExecutionStatus = ExecutionStatus.SUCCESS
     metrics: RunMetrics = field(default_factory=RunMetrics)
     artifacts: dict[str, Path] = field(default_factory=dict)
-    details: list[Any] = field(default_factory=list)   # typed by each analyzer
-    raw_output: str = ""                               # full stdout/stderr captured
-    error_message: str = ""                            # populated when status == ERROR
+    details: list[Any] = field(default_factory=list)  # typed by each analyzer
+    raw_output: str = ""  # full stdout/stderr captured
+    error_message: str = ""  # populated when status == ERROR
 
 
 @dataclass

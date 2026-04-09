@@ -1,9 +1,6 @@
 """Tests for the Runner orchestrator."""
 
 from pathlib import Path
-from unittest.mock import call
-
-import pytest
 
 from sebco_qa_engine.core.base_analyzer import BaseAnalyzer
 from sebco_qa_engine.core.models import (
@@ -14,10 +11,10 @@ from sebco_qa_engine.core.models import (
 )
 from sebco_qa_engine.orchestration.runner import Runner
 
-
 # ---------------------------------------------------------------------------
 # FakeAnalyzer — returns a canned result without subprocess calls
 # ---------------------------------------------------------------------------
+
 
 class FakeAnalyzer(BaseAnalyzer):
     """A test double for BaseAnalyzer that returns a pre-configured result."""
@@ -68,11 +65,13 @@ def _make_fake(name="fake", status=ExecutionStatus.SUCCESS, score=90.0, output_d
 # TestRunnerInit
 # ---------------------------------------------------------------------------
 
+
 class TestRunnerInit:
     def test_run_id_is_auto_generated_uuid_when_not_provided(self):
         runner = Runner(analyzers=[])
         # UUID4 format: 8-4-4-4-12 hex chars with dashes
         import re
+
         pattern = r"^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         assert re.match(pattern, runner.run_id), f"Expected UUID4, got: {runner.run_id}"
 
@@ -98,6 +97,7 @@ class TestRunnerInit:
 # ---------------------------------------------------------------------------
 # TestRunnerRun
 # ---------------------------------------------------------------------------
+
 
 class TestRunnerRun:
     def test_returns_runner_result(self):

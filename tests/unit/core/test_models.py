@@ -94,29 +94,40 @@ class TestRunnerResult:
         assert rr.run_id == "abc-123"
 
     def test_all_succeeded_true_when_no_errors(self):
-        rr = RunnerResult(results=[
-            AnalyzerResult(analyzer="a", language="python",
-                           execution_status=ExecutionStatus.SUCCESS),
-            AnalyzerResult(analyzer="b", language="python",
-                           execution_status=ExecutionStatus.FAILED),
-        ])
+        rr = RunnerResult(
+            results=[
+                AnalyzerResult(
+                    analyzer="a", language="python", execution_status=ExecutionStatus.SUCCESS
+                ),
+                AnalyzerResult(
+                    analyzer="b", language="python", execution_status=ExecutionStatus.FAILED
+                ),
+            ]
+        )
         assert rr.all_succeeded is True
 
     def test_all_succeeded_false_when_any_error(self):
-        rr = RunnerResult(results=[
-            AnalyzerResult(analyzer="a", language="python",
-                           execution_status=ExecutionStatus.SUCCESS),
-            AnalyzerResult(analyzer="b", language="python",
-                           execution_status=ExecutionStatus.ERROR),
-        ])
+        rr = RunnerResult(
+            results=[
+                AnalyzerResult(
+                    analyzer="a", language="python", execution_status=ExecutionStatus.SUCCESS
+                ),
+                AnalyzerResult(
+                    analyzer="b", language="python", execution_status=ExecutionStatus.ERROR
+                ),
+            ]
+        )
         assert rr.all_succeeded is False
 
     def test_all_succeeded_true_when_empty(self):
         assert RunnerResult().all_succeeded is True
 
     def test_skipped_does_not_affect_all_succeeded(self):
-        rr = RunnerResult(results=[
-            AnalyzerResult(analyzer="a", language="python",
-                           execution_status=ExecutionStatus.SKIPPED),
-        ])
+        rr = RunnerResult(
+            results=[
+                AnalyzerResult(
+                    analyzer="a", language="python", execution_status=ExecutionStatus.SKIPPED
+                ),
+            ]
+        )
         assert rr.all_succeeded is True

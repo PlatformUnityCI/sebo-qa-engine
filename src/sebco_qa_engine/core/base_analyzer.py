@@ -85,7 +85,9 @@ class BaseAnalyzer(ABC):
             logger.debug("[%s] Raw output captured (%d chars)", self.name, len(raw_output))
 
             result = self.normalize(raw_output)
-            logger.debug("[%s] Normalization complete — status: %s", self.name, result.execution_status)
+            logger.debug(
+                "[%s] Normalization complete — status: %s", self.name, result.execution_status
+            )
 
             self.write_artifacts(result)
             logger.info("[%s] Artifacts written to %s", self.name, self.output_dir)

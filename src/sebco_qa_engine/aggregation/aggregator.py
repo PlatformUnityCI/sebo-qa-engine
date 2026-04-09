@@ -22,7 +22,6 @@ from __future__ import annotations
 import logging
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
 
 from sebco_qa_engine.aggregation.models import (
     AggregatedReport,
@@ -149,26 +148,17 @@ class Aggregator:
     @staticmethod
     def _build_summary(snapshots: list[AnalyzerSnapshot], declared: int) -> RunSummary:
         """Compute RunSummary from the list of AnalyzerSnapshot objects."""
-        executed = sum(
-            1 for s in snapshots
-            if s.execution_status != ExecutionStatus.SKIPPED.value
-        )
-        passed  = sum(1 for s in snapshots if s.quality_gate == GateVerdict.PASS.value)
-        warned  = sum(1 for s in snapshots if s.quality_gate == GateVerdict.WARN.value)
-        failed  = sum(1 for s in snapshots if s.quality_gate == GateVerdict.FAIL.value)
-        errored = sum(
-            1 for s in snapshots
-            if s.execution_status == ExecutionStatus.ERROR.value
-        )
-        skipped = sum(
-            1 for s in snapshots
-            if s.execution_status == ExecutionStatus.SKIPPED.value
-        )
+        executed = sum(1 for s in snapshots if s.execution_status != ExecutionStatus.SKIPPED.value)
+        passed = sum(1 for s in snapshots if s.quality_gate == GateVerdict.PASS.value)
+        warned = sum(1 for s in snapshots if s.quality_gate == GateVerdict.WARN.value)
+        failed = sum(1 for s in snapshots if s.quality_gate == GateVerdict.FAIL.value)
+        errored = sum(1 for s in snapshots if s.execution_status == ExecutionStatus.ERROR.value)
+        skipped = sum(1 for s in snapshots if s.execution_status == ExecutionStatus.SKIPPED.value)
 
         executed_pct = round(executed / declared * 100, 2) if declared else 0.0
-        success_pct  = round(passed / executed * 100, 2) if executed else 0.0
+        success_pct = round(passed / executed * 100, 2) if executed else 0.0
         # pending = warned + failed + errored (skipped is intentional, not pending)
-        pending_pct  = round((warned + failed + errored) / declared * 100, 2) if declared else 0.0
+        pending_pct = round((warned + failed + errored) / declared * 100, 2) if declared else 0.0
 
         return RunSummary(
             declared=declared,

@@ -1,7 +1,5 @@
 """Tests for text utility functions."""
 
-import pytest
-
 from sebco_qa_engine.utils.text import strip_ansi
 
 

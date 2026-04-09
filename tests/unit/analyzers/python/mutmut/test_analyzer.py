@@ -17,10 +17,10 @@ from sebco_qa_engine.analyzers.python.mutmut.config import MutmutConfig
 from sebco_qa_engine.analyzers.python.mutmut.models import MutantDetail
 from sebco_qa_engine.core.models import ExecutionStatus
 
-
 # ---------------------------------------------------------------------------
 # Fixtures — synthetic mutmut output
 # ---------------------------------------------------------------------------
+
 
 def _make_proc(stdout: str, returncode: int = 0) -> MagicMock:
     proc = MagicMock()
@@ -36,25 +36,29 @@ def _make_analyzer(tmp_path: Path, config: MutmutConfig | None = None) -> Mutmut
 
 def _make_raw_with_survivors() -> str:
     sep = "\n" + "=" * 60 + "\n"
-    return sep.join([
-        "=== mutmut run ===\n🎉  40 🙁  3",
-        "=== mutmut results ===\n1: survived\n2: survived\n42: survived",
-        (
-            "=== mutmut show ===\n"
-            "----- MUTANT: 1 -----\ndiff1\n"
-            "----- MUTANT: 2 -----\ndiff2\n"
-            "----- MUTANT: 42 -----\ndiff42\n"
-        ),
-    ])
+    return sep.join(
+        [
+            "=== mutmut run ===\n🎉  40 🙁  3",
+            "=== mutmut results ===\n1: survived\n2: survived\n42: survived",
+            (
+                "=== mutmut show ===\n"
+                "----- MUTANT: 1 -----\ndiff1\n"
+                "----- MUTANT: 2 -----\ndiff2\n"
+                "----- MUTANT: 42 -----\ndiff42\n"
+            ),
+        ]
+    )
 
 
 def _make_raw_no_survivors() -> str:
     sep = "\n" + "=" * 60 + "\n"
-    return sep.join([
-        "=== mutmut run ===\n🎉  40 🙁  0",
-        "=== mutmut results ===\nAll OK.",
-        "=== mutmut show ===\nNo surviving mutants.",
-    ])
+    return sep.join(
+        [
+            "=== mutmut run ===\n🎉  40 🙁  0",
+            "=== mutmut results ===\nAll OK.",
+            "=== mutmut show ===\nNo surviving mutants.",
+        ]
+    )
 
 
 def _make_raw_with_progress_lines() -> str:
@@ -77,21 +81,24 @@ def _make_raw_with_progress_lines() -> str:
         "⠸ 5/5  🎉 2 🫥 0  ⏰ 0  🤔 0  🙁 3  🔇 0  🧙 0\n"
         "31.85 mutations/second"
     )
-    return sep.join([
-        run_section,
-        (
-            "=== mutmut results ===\n"
-            "lib_core.time_utils.date_utils.x_generate_time__mutmut_2: survived\n"
-            "lib_core.time_utils.date_utils.x_generate_time__mutmut_4: survived\n"
-            "lib_core.time_utils.date_utils.x_generate_time__mutmut_5: survived"
-        ),
-        "=== mutmut show ===\nNo surviving mutants.",
-    ])
+    return sep.join(
+        [
+            run_section,
+            (
+                "=== mutmut results ===\n"
+                "lib_core.time_utils.date_utils.x_generate_time__mutmut_2: survived\n"
+                "lib_core.time_utils.date_utils.x_generate_time__mutmut_4: survived\n"
+                "lib_core.time_utils.date_utils.x_generate_time__mutmut_5: survived"
+            ),
+            "=== mutmut show ===\nNo surviving mutants.",
+        ]
+    )
 
 
 # ---------------------------------------------------------------------------
 # Tests: MutantDetail (mutmut-specific model)
 # ---------------------------------------------------------------------------
+
 
 class TestMutantDetail:
     def test_defaults(self):
@@ -109,6 +116,7 @@ class TestMutantDetail:
 # ---------------------------------------------------------------------------
 # Tests: run()
 # ---------------------------------------------------------------------------
+
 
 class TestMutmutAnalyzerRun:
     def test_run_calls_mutmut_run_first(self, tmp_path):
@@ -168,7 +176,9 @@ class TestMutmutAnalyzerRun:
 
         analyzer = _make_analyzer(tmp_path, config=MutmutConfig(timeout=1))
 
-        with patch("subprocess.run", side_effect=subprocess.TimeoutExpired(cmd="mutmut", timeout=1)):
+        with patch(
+            "subprocess.run", side_effect=subprocess.TimeoutExpired(cmd="mutmut", timeout=1)
+        ):
             raw = analyzer.run()
 
         assert "[TIMEOUT]" in raw
@@ -197,6 +207,7 @@ class TestMutmutAnalyzerRun:
 # ---------------------------------------------------------------------------
 # Tests: normalize()
 # ---------------------------------------------------------------------------
+
 
 class TestMutmutAnalyzerNormalize:
     def test_score_calculated_correctly(self, tmp_path):
@@ -273,15 +284,18 @@ class TestMutmutAnalyzerNormalize:
 # Tests: write_artifacts()
 # ---------------------------------------------------------------------------
 
+
 class TestMutmutAnalyzerWriteArtifacts:
     def _get_result_and_analyzer(self, tmp_path):
         analyzer = _make_analyzer(tmp_path)
         sep = "\n" + "=" * 60 + "\n"
-        raw = sep.join([
-            "=== mutmut run ===\n🎉  10 🙁  1",
-            "=== mutmut results ===\n5: survived",
-            "=== mutmut show ===\n----- MUTANT: 5 -----\ndiff5",
-        ])
+        raw = sep.join(
+            [
+                "=== mutmut run ===\n🎉  10 🙁  1",
+                "=== mutmut results ===\n5: survived",
+                "=== mutmut show ===\n----- MUTANT: 5 -----\ndiff5",
+            ]
+        )
         return analyzer, analyzer.normalize(raw)
 
     def test_raw_file_created(self, tmp_path):
@@ -344,6 +358,7 @@ class TestMutmutAnalyzerWriteArtifacts:
 # Tests: cache management
 # ---------------------------------------------------------------------------
 
+
 class TestMutmutCacheManagement:
     def test_cache_not_deleted_by_default(self, tmp_path):
         cache_file = tmp_path / ".mutmut-cache"
@@ -383,6 +398,7 @@ class TestMutmutCacheManagement:
 # ---------------------------------------------------------------------------
 # Tests: full analyze() pipeline
 # ---------------------------------------------------------------------------
+
 
 class TestMutmutAnalyzerFullPipeline:
     def test_analyze_returns_analyzer_result(self, tmp_path):

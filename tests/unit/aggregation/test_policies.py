@@ -13,10 +13,10 @@ from sebco_qa_engine.aggregation.policies import (
 )
 from sebco_qa_engine.core.models import AnalyzerResult, ExecutionStatus, RunMetrics
 
-
 # ---------------------------------------------------------------------------
 # Shared helper
 # ---------------------------------------------------------------------------
+
 
 def _make_result(
     analyzer="mutmut",
@@ -48,6 +48,7 @@ def _make_result(
 # GateResult
 # ---------------------------------------------------------------------------
 
+
 class TestGateResult:
     def test_construction_stores_fields(self):
         gr = GateResult(
@@ -67,6 +68,7 @@ class TestGateResult:
 # ---------------------------------------------------------------------------
 # ScoreGatePolicy
 # ---------------------------------------------------------------------------
+
 
 class TestScoreGatePolicy:
     def setup_method(self):
@@ -97,21 +99,15 @@ class TestScoreGatePolicy:
         assert "60.0" in result.reason
 
     def test_skip_when_execution_status_is_error(self):
-        result = self.policy.evaluate(
-            _make_result(score=90.0, status=ExecutionStatus.ERROR)
-        )
+        result = self.policy.evaluate(_make_result(score=90.0, status=ExecutionStatus.ERROR))
         assert result.verdict == GateVerdict.SKIP
 
     def test_skip_when_execution_status_is_failed(self):
-        result = self.policy.evaluate(
-            _make_result(score=90.0, status=ExecutionStatus.FAILED)
-        )
+        result = self.policy.evaluate(_make_result(score=90.0, status=ExecutionStatus.FAILED))
         assert result.verdict == GateVerdict.SKIP
 
     def test_skip_when_execution_status_is_skipped(self):
-        result = self.policy.evaluate(
-            _make_result(score=90.0, status=ExecutionStatus.SKIPPED)
-        )
+        result = self.policy.evaluate(_make_result(score=90.0, status=ExecutionStatus.SKIPPED))
         assert result.verdict == GateVerdict.SKIP
 
     def test_skip_when_score_is_none(self):
@@ -130,6 +126,7 @@ class TestScoreGatePolicy:
 # ---------------------------------------------------------------------------
 # IssueCountPolicy
 # ---------------------------------------------------------------------------
+
 
 class TestIssueCountPolicy:
     def test_pass_when_count_within_max(self):
@@ -174,9 +171,7 @@ class TestIssueCountPolicy:
 
     def test_skip_when_execution_status_not_success(self):
         policy = IssueCountPolicy(max_issues=5)
-        result = policy.evaluate(
-            _make_result(issue_count=2, status=ExecutionStatus.ERROR)
-        )
+        result = policy.evaluate(_make_result(issue_count=2, status=ExecutionStatus.ERROR))
         assert result.verdict == GateVerdict.SKIP
 
     def test_skip_when_issue_count_is_none(self):
@@ -201,6 +196,7 @@ class TestIssueCountPolicy:
 # ---------------------------------------------------------------------------
 # SeverityPolicy
 # ---------------------------------------------------------------------------
+
 
 class TestSeverityPolicy:
     def _result_with_severity(self, high=0, medium=0, status=ExecutionStatus.SUCCESS):
@@ -241,9 +237,7 @@ class TestSeverityPolicy:
 
     def test_skip_when_execution_status_not_success(self):
         policy = SeverityPolicy(max_high=0, max_medium=3)
-        result = policy.evaluate(
-            self._result_with_severity(status=ExecutionStatus.ERROR)
-        )
+        result = policy.evaluate(self._result_with_severity(status=ExecutionStatus.ERROR))
         assert result.verdict == GateVerdict.SKIP
 
     def test_skip_when_no_severity_in_extra(self):
@@ -282,6 +276,7 @@ class TestSeverityPolicy:
 # ---------------------------------------------------------------------------
 # CompositePolicy
 # ---------------------------------------------------------------------------
+
 
 class TestCompositePolicy:
     def test_empty_policies_returns_skip(self):

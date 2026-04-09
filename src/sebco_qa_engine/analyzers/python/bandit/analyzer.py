@@ -83,7 +83,8 @@ class BanditAnalyzer(BaseAnalyzer):
         """
         cmd = [
             "bandit",
-            "-f", "json",
+            "-f",
+            "json",
             *(["--recursive"] if self.config.recursive else []),
             *self.config.paths,
             *self.config.extra_args,
@@ -91,7 +92,7 @@ class BanditAnalyzer(BaseAnalyzer):
         logger.debug("[bandit] Running: %s", " ".join(cmd))
 
         try:
-            proc = subprocess.run(
+            proc = subprocess.run(  # noqa: S603
                 cmd,
                 capture_output=True,
                 text=True,
@@ -166,9 +167,9 @@ class BanditAnalyzer(BaseAnalyzer):
         #   1 HIGH, 0 MED,  0 LOW  → score = max(0, 100 - 50)  = 50
         #   0 HIGH, 5 MED,  0 LOW  → score = max(0, 100 - 50)  = 50
         penalty = (
-            high   * self.config.high_weight
+            high * self.config.high_weight
             + medium * self.config.medium_weight
-            + low    * self.config.low_weight
+            + low * self.config.low_weight
         )
         score = float(max(0, 100 - penalty))
 

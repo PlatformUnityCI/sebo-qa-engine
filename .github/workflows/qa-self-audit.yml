@@ -1,0 +1,60 @@
+name: QA Self Audit
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  qa-audit:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install deps
+        run: |
+          pip install ruff bandit pip-audit
+
+      - name: Create reports directory
+        run: mkdir -p reports
+
+      - name: Ruff
+        run: |
+          ruff check . | tee reports/ruff.txt
+
+      - name: Bandit (fail on medium/high)
+        run: |
+          bandit -r src -f json -o reports/bandit.json || true
+          cat reports/bandit.json
+
+          if grep -E '"issue_severity": "(MEDIUM|HIGH)"' reports/bandit.json; then
+            echo "❌ Medium/High vulnerabilities found"
+            exit 1
+          fi
+
+      - name: pip-audit
+        run: |
+          pip-audit | tee reports/pip-audit.txt
+
+      - name: Semgrep
+        uses: returntocorp/semgrep-action@v1
+        with:
+          config: p/default
+
+      - name: Save Semgrep summary
+        if: always()
+        run: |
+          semgrep --config p/default src | tee reports/semgrep.txt
+
+      - name: Upload QA self audit artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: qa-auto-self-report
+          path: reports/

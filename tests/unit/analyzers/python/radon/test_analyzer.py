@@ -16,10 +16,10 @@ from sebco_qa_engine.analyzers.python.radon.analyzer import RadonAnalyzer
 from sebco_qa_engine.analyzers.python.radon.config import RadonConfig
 from sebco_qa_engine.core.models import ExecutionStatus
 
-
 # ---------------------------------------------------------------------------
 # Fixtures — synthetic radon output
 # ---------------------------------------------------------------------------
+
 
 def _make_proc(stdout: str, returncode: int = 0) -> MagicMock:
     proc = MagicMock()
@@ -34,16 +34,20 @@ def _make_analyzer(tmp_path: Path, config: RadonConfig | None = None) -> RadonAn
 
 
 # Legacy format (radon < 5.x): each file maps to a list of module dicts.
-RADON_JSON_LEGACY = json.dumps({
-    "src/foo.py": [{"type": "Module", "rank": "A", "mi": 87.5, "name": "src/foo.py"}],
-    "src/bar.py": [{"type": "Module", "rank": "B", "mi": 65.3, "name": "src/bar.py"}],
-})
+RADON_JSON_LEGACY = json.dumps(
+    {
+        "src/foo.py": [{"type": "Module", "rank": "A", "mi": 87.5, "name": "src/foo.py"}],
+        "src/bar.py": [{"type": "Module", "rank": "B", "mi": 65.3, "name": "src/bar.py"}],
+    }
+)
 
 # Current format (radon ≥ 5.x): each file maps to a plain dict {mi, rank}.
-RADON_JSON_CURRENT = json.dumps({
-    "src/foo.py": {"mi": 87.5, "rank": "A"},
-    "src/bar.py": {"mi": 65.3, "rank": "B"},
-})
+RADON_JSON_CURRENT = json.dumps(
+    {
+        "src/foo.py": {"mi": 87.5, "rank": "A"},
+        "src/bar.py": {"mi": 65.3, "rank": "B"},
+    }
+)
 
 # Default fixture used in most tests — current format.
 RADON_JSON = RADON_JSON_CURRENT
@@ -51,16 +55,19 @@ RADON_JSON = RADON_JSON_CURRENT
 RADON_JSON_EMPTY = json.dumps({})
 
 # foo=A, bar=B, baz=C → ok_count=2, issue_count=1
-RADON_JSON_MIXED_GRADES = json.dumps({
-    "src/foo.py": {"mi": 90.0, "rank": "A"},
-    "src/bar.py": {"mi": 75.0, "rank": "B"},
-    "src/baz.py": {"mi": 40.0, "rank": "C"},
-})
+RADON_JSON_MIXED_GRADES = json.dumps(
+    {
+        "src/foo.py": {"mi": 90.0, "rank": "A"},
+        "src/bar.py": {"mi": 75.0, "rank": "B"},
+        "src/baz.py": {"mi": 40.0, "rank": "C"},
+    }
+)
 
 
 # ---------------------------------------------------------------------------
 # Tests: run()
 # ---------------------------------------------------------------------------
+
 
 class TestRadonAnalyzerRun:
     def test_run_calls_radon_mi_with_json_flag(self, tmp_path):
@@ -130,6 +137,7 @@ class TestRadonAnalyzerRun:
 # ---------------------------------------------------------------------------
 # Tests: normalize()
 # ---------------------------------------------------------------------------
+
 
 class TestRadonAnalyzerNormalize:
     def test_execution_status_success_on_valid_json(self, tmp_path):
@@ -212,6 +220,7 @@ class TestRadonAnalyzerNormalize:
 # Tests: write_artifacts()
 # ---------------------------------------------------------------------------
 
+
 class TestRadonAnalyzerWriteArtifacts:
     def _get_result_and_analyzer(self, tmp_path):
         analyzer = _make_analyzer(tmp_path)
@@ -280,6 +289,7 @@ class TestRadonAnalyzerWriteArtifacts:
 # Tests: full analyze() pipeline
 # ---------------------------------------------------------------------------
 
+
 class TestRadonAnalyzerFullPipeline:
     def test_analyze_returns_analyzer_result(self, tmp_path):
         from sebco_qa_engine.core.models import AnalyzerResult
@@ -316,6 +326,7 @@ class TestRadonAnalyzerFullPipeline:
 # ---------------------------------------------------------------------------
 # Tests: radon ≥ 5.x (current) format compatibility
 # ---------------------------------------------------------------------------
+
 
 class TestRadonAnalyzerCurrentFormat:
     """Ensure the current radon ≥ 5.x dict-per-file format is parsed correctly."""
@@ -356,6 +367,7 @@ class TestRadonAnalyzerCurrentFormat:
 # Tests: ok_count and issue_count from grade distribution
 # ---------------------------------------------------------------------------
 
+
 class TestRadonAnalyzerGradeMetrics:
     def test_ok_count_is_a_plus_b_grades(self, tmp_path):
         analyzer = _make_analyzer(tmp_path)
@@ -370,20 +382,24 @@ class TestRadonAnalyzerGradeMetrics:
         assert result.metrics.issue_count == 1
 
     def test_ok_count_zero_when_all_bad(self, tmp_path):
-        all_bad = json.dumps({
-            "src/a.py": {"mi": 20.0, "rank": "F"},
-            "src/b.py": {"mi": 30.0, "rank": "D"},
-        })
+        all_bad = json.dumps(
+            {
+                "src/a.py": {"mi": 20.0, "rank": "F"},
+                "src/b.py": {"mi": 30.0, "rank": "D"},
+            }
+        )
         analyzer = _make_analyzer(tmp_path)
         result = analyzer.normalize(all_bad)
         assert result.metrics.ok_count == 0
         assert result.metrics.issue_count == 2
 
     def test_issue_count_zero_when_all_good(self, tmp_path):
-        all_good = json.dumps({
-            "src/a.py": {"mi": 90.0, "rank": "A"},
-            "src/b.py": {"mi": 82.0, "rank": "A"},
-        })
+        all_good = json.dumps(
+            {
+                "src/a.py": {"mi": 90.0, "rank": "A"},
+                "src/b.py": {"mi": 82.0, "rank": "A"},
+            }
+        )
         analyzer = _make_analyzer(tmp_path)
         result = analyzer.normalize(all_good)
         assert result.metrics.ok_count == 2
@@ -393,6 +409,7 @@ class TestRadonAnalyzerGradeMetrics:
 # ---------------------------------------------------------------------------
 # Tests: score clamping and error_message on ERROR
 # ---------------------------------------------------------------------------
+
 
 class TestRadonAnalyzerScoreAndErrors:
     def test_score_clamped_to_100(self, tmp_path):
@@ -429,6 +446,7 @@ class TestRadonAnalyzerScoreAndErrors:
 # ---------------------------------------------------------------------------
 # Tests: run() — min_rank forwarded to command
 # ---------------------------------------------------------------------------
+
 
 class TestRadonAnalyzerRunMinRank:
     def test_run_forwards_min_rank(self, tmp_path):

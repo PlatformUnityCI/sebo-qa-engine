@@ -17,10 +17,10 @@ from sebco_qa_engine.analyzers.python.coverage.analyzer import CoverageAnalyzer
 from sebco_qa_engine.analyzers.python.coverage.config import CoverageConfig
 from sebco_qa_engine.core.models import AnalyzerResult, ExecutionStatus
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_proc(stdout: str, returncode: int = 0) -> MagicMock:
     proc = MagicMock()
@@ -66,6 +66,7 @@ src/foo.py                   50     10    80%
 # ---------------------------------------------------------------------------
 # Tests: run()
 # ---------------------------------------------------------------------------
+
 
 class TestCoverageAnalyzerRun:
     def test_run_executes_coverage_run_then_report_by_default(self, tmp_path):
@@ -144,7 +145,9 @@ class TestCoverageAnalyzerRun:
         """If 'coverage run' times out the report step must be skipped."""
         analyzer = _make_analyzer(tmp_path, config=CoverageConfig(timeout=5))
 
-        with patch("subprocess.run", side_effect=subprocess.TimeoutExpired(cmd="coverage", timeout=5)):
+        with patch(
+            "subprocess.run", side_effect=subprocess.TimeoutExpired(cmd="coverage", timeout=5)
+        ):
             raw = analyzer.run()
 
         assert "[TIMEOUT]" in raw
@@ -176,6 +179,7 @@ class TestCoverageAnalyzerRun:
 # ---------------------------------------------------------------------------
 # Tests: normalize()
 # ---------------------------------------------------------------------------
+
 
 class TestCoverageAnalyzerNormalize:
     def test_score_parsed_from_total_line(self, tmp_path):
@@ -261,6 +265,7 @@ class TestCoverageAnalyzerNormalize:
 # ---------------------------------------------------------------------------
 # Tests: write_artifacts()
 # ---------------------------------------------------------------------------
+
 
 class TestCoverageAnalyzerWriteArtifacts:
     def _get_result_and_analyzer(self, tmp_path):
@@ -348,6 +353,7 @@ class TestCoverageAnalyzerWriteArtifacts:
 # Tests: full analyze() pipeline
 # ---------------------------------------------------------------------------
 
+
 class TestCoverageAnalyzerFullPipeline:
     def test_analyze_returns_analyzer_result(self, tmp_path):
         analyzer = _make_analyzer(tmp_path)
@@ -393,6 +399,7 @@ class TestCoverageAnalyzerFullPipeline:
 # Tests: normalize() — sentinel strings from run() map to ERROR status
 # ---------------------------------------------------------------------------
 
+
 class TestCoverageAnalyzerNormalizeSentinels:
     """Verify that [TIMEOUT] and [ERROR] sentinels injected by run() produce
     ExecutionStatus.ERROR — not FAILED — in normalize()."""
@@ -437,6 +444,7 @@ class TestCoverageAnalyzerNormalizeSentinels:
 # ---------------------------------------------------------------------------
 # Tests: _to_summary_json — score_percent field and score formatting
 # ---------------------------------------------------------------------------
+
 
 class TestCoverageAnalyzerSummaryJson:
     def _get_summary_data(self, tmp_path) -> dict:

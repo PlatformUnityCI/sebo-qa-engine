@@ -89,7 +89,7 @@ class RadonAnalyzer(BaseAnalyzer):
         logger.debug("[radon] Running: %s", " ".join(cmd))
 
         try:
-            proc = subprocess.run(
+            proc = subprocess.run(  # noqa: S603
                 cmd,
                 capture_output=True,
                 text=True,
@@ -161,11 +161,13 @@ class RadonAnalyzer(BaseAnalyzer):
                     all_mi_values.append(float(mi_value))
                 if rank in grade_counts:
                     grade_counts[rank] += 1
-                details.append({
-                    "file": filename,
-                    "mi": mi_value,
-                    "rank": rank,
-                })
+                details.append(
+                    {
+                        "file": filename,
+                        "mi": mi_value,
+                        "rank": rank,
+                    }
+                )
 
         total = len(all_mi_values)
 
@@ -260,8 +262,7 @@ class RadonAnalyzer(BaseAnalyzer):
         issue_str = str(m.issue_count) if m.issue_count is not None else "N/A"
 
         grade_rows = "\n".join(
-            f"| {grade} | **{count}** |"
-            for grade, count in sorted(grades.items())
+            f"| {grade} | **{count}** |" for grade, count in sorted(grades.items())
         )
 
         return f"""\
