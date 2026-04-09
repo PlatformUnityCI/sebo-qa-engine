@@ -1,6 +1,6 @@
 # Sebco QA Engine
 
-Language-agnostic, reusable quality validation engine designed to be invoked from external repositories via GitHub Actions. The core is decoupled from any specific language or tool — analyzers are pluggable strategy components that conform to a common contract, making it straightforward to add new languages without touching the orchestration or aggregation layers.
+Language-agnostic, reusable quality validation engine designed to be invoked from external repositories via GitHub Actions. The core is fully decoupled from any specific language or tool. Analyzers are pluggable strategy components that conform to a common contract, making it straightforward to add new languages without touching the orchestration or aggregation layers.
 
 > Part of the sebco-labs / PlatformUnityCI ecosystem.
 
@@ -90,11 +90,10 @@ qa-report/
 ### Requirements
 
 - Python ≥ 3.11
-- The consumer repository must provide the analyzer dependencies required by `sebco-qa-engine`
+- The consumer repository must provide the dependencies required by the selected analyzers.
 - These dependencies are typically installed through the consumer repository's `requirements.txt`
 
-## Analyzer tools expected by `sebco-qa-engine`
-## Python ✅
+## Analyzer tools (Python ✅)
 
 | Analyzer | Tool | Signal | Gate type |
 |---|---|---|---|
@@ -115,7 +114,7 @@ qa-report/
 
 ### Via `workflow_call` (recommended)
 
-In your repository, create example: `.github/workflows/qa.yml`. And add next step:
+In your repository, create a workflow file (e.g. `.github/workflows/qa.yml`. And add:
 
 ```yaml
 name: QA Engine
@@ -140,7 +139,7 @@ jobs:
 | Input | Default | Description |
 |---|---|---|
 | `python-version` | `"3.12"` | Python version to use |
-| `analyzers` | `"flake8,coverage,bandit,radon, mutmut"` | Comma-separated list of analyzers to run. Valid values: `flake8`, `coverage`, `bandit`, `radon`, `mutmut` |
+| `analyzers` | `"flake8,coverage,bandit,radon,mutmut"` | Comma-separated list of analyzers to run. Valid values: `flake8`, `coverage`, `bandit`, `radon`, `mutmut` |
 | `output-dir` | `"qa-report"` | Directory where QA artifacts are written |
 | `engine-ref` | `"main"` | Branch/tag of this engine to install |
 
