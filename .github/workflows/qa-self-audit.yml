@@ -19,7 +19,7 @@ jobs:
 
       - name: Install deps
         run: |
-          pip install ruff bandit pip-audit semgrep
+          pip install ruff bandit pip-audit
 
       - name: Ruff
         run: ruff check .
@@ -37,4 +37,6 @@ jobs:
         run: pip-audit
 
       - name: Semgrep
-        run: semgrep --config p/default src
+        uses: returntocorp/semgrep-action@v1
+        with:
+          config: p/default
