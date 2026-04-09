@@ -39,7 +39,7 @@ on:
       install-command:
         description: "Command to install consumer repo dependencies"
         type: string
-        default: "pip install -e .[dev] --quiet"
+        default: ""
     secrets:
       token:
         description: "GitHub token for PR comments"
