@@ -81,12 +81,18 @@ qa-report/
 ├── qa-report.json              ← Aggregated report with all scores and gate verdicts
 └── qa-summary.md               ← Human-readable Markdown (also posted as PR comment)
 ```
-
 ---
 
-## Analyzers
+## Setup
 
-### Python ✅
+### Requirements
+
+- Python ≥ 3.11
+- The consumer repository must provide the analyzer dependencies required by `sebco-qa-engine`
+- These dependencies are typically installed through the consumer repository's `requirements.txt`
+
+## Analyzer tools expected by `sebco-qa-engine`
+## Python ✅
 
 | Analyzer | Tool | Signal | Gate type |
 |---|---|---|---|
@@ -96,81 +102,10 @@ qa-report/
 | `bandit` | [bandit](https://bandit.readthedocs.io/) | Severity breakdown (HIGH/MEDIUM/LOW) | `SeverityPolicy` |
 | `radon` | [radon](https://radon.readthedocs.io/) | Maintainability index (%) | `ScoreGatePolicy` |
 
-### Java 🔲 Planned
 
-<!-- Add Java analyzers here (e.g. PITest for mutation, Checkstyle for linting, JaCoCo for coverage, SpotBugs for security) -->
-
-### Go 🔲 Planned
-
-<!-- Add Go analyzers here (e.g. go test -cover for coverage, staticcheck/golangci-lint for linting, govulncheck for security) -->
-
-### JavaScript 🔲 Planned
-
-<!-- Add JavaScript/TypeScript analyzers here -->
-
-#### React
-
-<!-- Add React-specific analyzers here (e.g. jest/vitest for unit tests, react-testing-library coverage, eslint-plugin-react for linting) -->
-
-#### Cypress
-
-<!-- Add Cypress E2E test result analyzer here -->
-
-#### Playwright
-
-<!-- Add Playwright E2E test result analyzer here -->
-
----
-
-### Default quality gate thresholds (Python)
-
-| Analyzer | WARN | FAIL | Approach |
-|---|---|---|---|
-| `mutmut` | score < 80% | score < 60% | Score = killed / total × 100. Surviving mutants are test gaps. |
-| `flake8` | — | issue_count > 0 | Zero-tolerance: any PEP 8 / style violation fails the gate. Score is relative to a configurable `max_issue_budget`. |
-| `coverage` | score < 80% | score < 70% | Score = line coverage % reported by `coverage report`. |
-| `bandit` | — | any HIGH finding or medium > 5 | Severity-weighted score: HIGH × 50 + MEDIUM × 10 + LOW × 1 penalty subtracted from 100. Gate is hard on HIGH, tolerant on LOW. |
-| `radon` | score < 70% | score < 50% | Score = mean Maintainability Index across all modules (0–100). Files ranked C–F count as `issue_count`. |
-
----
-
-## Setup
-
-### Requirements
-
-- Python ≥ 3.11
-- The analyzer tools installed in the **target repo** (not the engine itself)
-
-### Install the engine (development)
-
-```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -e ".[dev]"
-```
-
-### Dev dependencies
-
-The `[dev]` extra installs:
-
-| Tool | Purpose |
-|---|---|
-| `pytest` | Test runner |
-| `pytest-cov` | Coverage reporting for the engine's own tests |
-| `mutmut` | Mutation testing of the engine itself |
-| `ruff` | Planned — see Roadmap Phase 3 |
-
-### Run the test suite
-
-```bash
-pytest
-```
-
-With coverage:
-
-```bash
-pytest --cov=sebco_qa_engine --cov-report=term-missing
-```
+> [!IMPORTANT]
+> The consumer repository must install the analyzer dependencies required by the selected `analyzers` set.
+> In most cases, this is done through the consumer repository's `requirements.txt`.
 
 ---
 
@@ -178,7 +113,7 @@ pytest --cov=sebco_qa_engine --cov-report=term-missing
 
 ### Via `workflow_call` (recommended)
 
-In your repository, create `.github/workflows/qa.yml`:
+In your repository, create example: `.github/workflows/qa.yml`. And add next step:
 
 ```yaml
 name: QA Engine
@@ -205,8 +140,6 @@ jobs:
 | `python-version` | `"3.12"` | Python version to use |
 | `analyzers` | `"flake8,coverage,bandit,radon, mutmut"` | Comma-separated list of analyzers to run. Valid values: `flake8`, `coverage`, `bandit`, `radon`, `mutmut` |
 | `output-dir` | `"qa-report"` | Directory where QA artifacts are written |
-| `engine-ref` | `"main"` | Branch/tag of this engine to install |
-| `install-command` | `"pip install -e .[dev] --quiet"` | Command to install consumer repo dependencies |
 
 #### Required permissions in the calling repository
 
@@ -227,133 +160,44 @@ permissions:
 7. Uploads all artifacts to the Actions run
 8. Fails the job if any quality gate returned `FAIL`
 
----
+> [!WARNING]
+> Since the consumer repository uses `mutmut`, it must include a root-level `pyproject.toml`.
 
-## Running via Python API
+#### Example
 
-```python
-from pathlib import Path
-from sebco_qa_engine.orchestration.runner import Runner
-from sebco_qa_engine.aggregation.aggregator import Aggregator
-from sebco_qa_engine.aggregation.defaults import DEFAULT_POLICIES
-from sebco_qa_engine.analyzers.python.flake8 import Flake8Analyzer
-from sebco_qa_engine.analyzers.python.coverage import CoverageAnalyzer
-from sebco_qa_engine.analyzers.python.bandit import BanditAnalyzer
-
-output_dir = Path("qa-report")
-
-runner = Runner(
-    analyzers=[
-        Flake8Analyzer(output_dir=output_dir / "flake8"),
-        CoverageAnalyzer(output_dir=output_dir / "coverage"),
-        BanditAnalyzer(output_dir=output_dir / "bandit"),
-    ]
-)
-
-runner_result = runner.run()
-
-aggregator = Aggregator(policies=DEFAULT_POLICIES, base_dir=output_dir)
-report = aggregator.aggregate(runner_result)
-
-for snapshot in report.results:
-    print(f"{snapshot.analyzer}: gate={snapshot.quality_gate} score={snapshot.score}")
+```toml
+[tool.mutmut]
+paths_to_mutate = [
+  "lib_core/time_utils"
+]
+tests_dir = [
+  "tests"
+]
+runner = "python -m pytest -m regression -q"
+do_not_mutate = [
+  "__init__.py"
+]
 ```
 
----
-
-## Quality gate policies
-
-The aggregation layer exposes four composable policies:
-
-| Policy | Use when |
+### 🧠 What this means
+| Keys | Description |
 |---|---|
-| `ScoreGatePolicy(ScoreThresholds(warn_below, fail_below))` | Tool produces a percentage score (mutmut, coverage, radon) |
-| `IssueCountPolicy(max_issues, warn_above)` | Tool counts violations (flake8) |
-| `SeverityPolicy(max_high, max_medium)` | Tool reports severity tiers (bandit) |
-| `CompositePolicy([...policies])` | Combine multiple signals; worst verdict wins |
-
-### Gate verdicts
-
-| Verdict | Meaning |
-|---|---|
-| `PASS` | All thresholds met |
-| `WARN` | Warning threshold breached — CI continues |
-| `FAIL` | Fail threshold breached — CI exits non-zero |
-| `SKIP` | Signal unavailable or analyzer did not execute |
-
-### Overriding defaults
-
-```python
-from sebco_qa_engine.aggregation.policies import ScoreGatePolicy, ScoreThresholds
-from sebco_qa_engine.aggregation.defaults import DEFAULT_POLICIES
-
-custom_policies = {
-    **DEFAULT_POLICIES,
-    "coverage": ScoreGatePolicy(ScoreThresholds(warn_below=90.0, fail_below=80.0)),
-}
-
-aggregator = Aggregator(policies=custom_policies, base_dir=output_dir)
-```
+|`paths_to_mutate` | defines the source code path that mutmut will mutate |
+|`tests_dir` | defines where the test suite lives |
+|`runner` | defines how tests should be executed during mutation analysis |
+|`do_not_mutate` | excludes files that should never be mutated, such as __init__.py |
 
 ---
 
-## Adding a new analyzer
+### Default quality gate thresholds (Python)
 
-1. Create `src/sebco_qa_engine/analyzers/<language>/<tool>/`
-2. Add `config.py` — dataclass with tool-specific options
-3. Add `analyzer.py` — subclass `BaseAnalyzer`, implement `run()`, `normalize()`, `write_artifacts()`
-4. Set `name` and `language` class attributes
-5. Add an entry to `aggregation/defaults.py` with sensible thresholds
-6. Add tests under `tests/unit/analyzers/<language>/<tool>/`
-
-The engine picks it up automatically when you add it to the `Runner`'s analyzer list.
-
----
-
-## Interpreting the aggregated report
-
-### `AnalyzerSnapshot` fields
-
-| Field | Type | Description |
-|---|---|---|
-| `analyzer` | `str` | Analyzer name (`"mutmut"`, `"flake8"`, …) |
-| `language` | `str` | Target language (`"python"`) |
-| `execution_status` | `str` | `success`, `failed`, `skipped`, `error` |
-| `quality_gate` | `str` | `pass`, `warn`, `fail`, `skip` |
-| `gate_reason` | `str` | Human-readable explanation of the gate verdict |
-| `score` | `float \| None` | Primary quality score (0–100) |
-| `total` | `int \| None` | Total items evaluated |
-| `ok_count` | `int \| None` | Items that passed |
-| `issue_count` | `int \| None` | Items that failed |
-| `artifact_paths` | `dict[str, str]` | Relative paths to written artifact files |
-| `error_message` | `str \| None` | Set when `execution_status` is `error` |
-
-### `RunSummary` fields
-
-| Field | Description |
-|---|---|
-| `declared` | Total analyzers registered |
-| `executed` | Analyzers that ran (not skipped) |
-| `passed` / `warned` / `failed` / `errored` / `skipped` | Count per gate verdict |
-| `executed_pct` | `executed / declared * 100` |
-| `success_pct` | `passed / executed * 100` |
-| `pending_pct` | `(warned + failed + errored) / declared * 100` |
-
----
-
-## CI / Governance workflows
-
-This repository ships three workflows of its own:
-
-| Workflow | File | Trigger | Purpose |
+| Analyzer | WARN | FAIL | Approach |
 |---|---|---|---|
-| **Python QA Engine** | `python-qa.yml` | `workflow_call` (from consumer repos) | Reusable QA pipeline — runs analyzers, aggregates, comments on PRs |
-| **PR Governance** | `pr-governance.yml` | `pull_request_target` → `main` | Enforces PR conventions via `PlatformUnityCI/cross-platform-guard` |
-| **Release** | `release.yml` | push → `main` | Semantic versioning and GitHub releases via `PlatformUnityCI/cross-platform-guard` |
-
-Releases follow [Conventional Commits](https://www.conventionalcommits.org/) and are published automatically with semantic-release (configured in `.releaserc.json`).
-
-Dependency updates are managed by **Dependabot** (weekly, for both `pip` and `github-actions`).
+| `mutmut` | score < 80% | score < 60% | Score = killed / total × 100. Surviving mutants are test gaps. |
+| `flake8` | — | issue_count > 0 | Zero-tolerance: any PEP 8 / style violation fails the gate. Score is relative to a configurable `max_issue_budget`. |
+| `coverage` | score < 80% | score < 70% | Score = line coverage % reported by `coverage report`. |
+| `bandit` | — | any HIGH finding or medium > 5 | Severity-weighted score: HIGH × 50 + MEDIUM × 10 + LOW × 1 penalty subtracted from 100. Gate is hard on HIGH, tolerant on LOW. |
+| `radon` | score < 70% | score < 50% | Score = mean Maintainability Index across all modules (0–100). Files ranked C–F count as `issue_count`. |
 
 ---
 
