@@ -252,7 +252,7 @@ jobs:
 
       - name: Comment QA summary on PR
         if: github.event_name == 'pull_request'
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         env:
           QA_OUTPUT_DIR: ${{ inputs.output-dir }}
         with:
