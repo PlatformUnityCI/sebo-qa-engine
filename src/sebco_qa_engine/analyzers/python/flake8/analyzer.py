@@ -169,18 +169,40 @@ class Flake8Analyzer(BaseAnalyzer):
         else:
             execution_status = ExecutionStatus.SUCCESS
 
-        budget = self.config.max_issue_budget
-        score_percent = max(0.0, round((1 - total / budget) * 100, 2))
+        fail_threshold = self.config.fail_threshold
+        warn_threshold = self.config.warn_threshold
+
+        if total > fail_threshold:
+            execution_status = ExecutionStatus.FAILED
+        elif total > warn_threshold:
+            execution_status = ExecutionStatus.WARNING
+
+        # budget = self.config.max_issue_budget
+        # score_percent = max(0.0, round((1 - total / budget) * 100, 2))
+
+        python_files = list(Path().rglob("*.py"))
+
+        dynamic_budget = max(
+            self.config.max_issue_budget,
+            len(python_files) * self.config.dynamic_budget_per_file,
+        )
+
+        budget = dynamic_budget
+
+        score_percent = max(
+            0.0,
+            round((1 - total / budget) * 100, 2),
+        )        
 
         metrics = RunMetrics(
             score=score_percent,
             total=total,
-            ok_count=0 if total > 0 else None,
+            ok_count = None if total > 0 else 1,
             issue_count=total,
             extra={
                 "violation_codes": unique_codes,
                 "score_percent": score_percent,
-                "max_issue_budget": budget,
+                "effective_budget": budget,
             },
         )
 

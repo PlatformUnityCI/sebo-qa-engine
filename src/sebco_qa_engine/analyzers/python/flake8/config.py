@@ -43,7 +43,21 @@ class Flake8Config:
     max_line_length: int | None = None  # None = use flake8 default
     extra_args: list[str] = field(default_factory=list)
     timeout: int | None = 120
+
+    # Score budget parameters
+    max_issue_budget: int = 100
+
+    # Soft warning threshold (for reporting purposes only, does not affect quality gate)
+    warn_threshold: int = 60
+
+    # Hard failure threshold (quality gate)
+    fail_threshold: int = 120
+
+    # Optional dynamic scaling
+    dynamic_budget_per_file: int = 3
+
+
     # Budget used to derive score_percent for reporting/dashboard.
     # score_percent = max(0, round((1 - issue_count / max_issue_budget) * 100, 2))
     # Does NOT affect the quality gate — that still uses max_issues (aggregation layer).
-    max_issue_budget: int = 50
+
