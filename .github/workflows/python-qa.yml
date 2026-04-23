@@ -35,7 +35,7 @@ on:
       engine-ref:
         description: "Branch/tag of sebco-qa-engine to use"
         type: string
-        default: "fix/flake8-threshold-policy"
+        default: "main"
     secrets:
       token:
         description: "GitHub token for PR comments"
