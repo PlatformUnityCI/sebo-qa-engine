@@ -248,7 +248,6 @@ jobs:
         env:
           QA_ANALYZERS: ${{ inputs.analyzers }}
           QA_OUTPUT_DIR: ${{ inputs.output-dir }}
-        continue-on-error: true
 
       - name: Comment QA summary on PR
         if: github.event_name == 'pull_request'
