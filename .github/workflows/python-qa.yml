@@ -115,7 +115,10 @@ jobs:
           base = Path(".")
 
           if "flake8" in requested:
-              from sebco_qa_engine.analyzers.python.flake8 import Flake8Analyzer
+              from sebco_qa_engine.analyzers.python.flake8 import (
+                  Flake8Analyzer,
+                  Flake8Config,
+              )
               analyzers.append(Flake8Analyzer(output_dir=output_dir / "flake8",config=Flake8Config(paths=["lib_core","tests","features",],max_line_length=120,),))
 
           if "coverage" in requested:
